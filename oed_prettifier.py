@@ -2,6 +2,7 @@ import argparse
 import re
 import sys
 import time
+import subprocess
 from pathlib import Path
 from pyglossary.glossary_v2 import Glossary
 from pyglossary.entry import Entry
@@ -10,8 +11,11 @@ CORE_HOMOGRAPH_PATTERN = r'<b><span style="color:#8B008B">▪ <span>[IVXL]+\.</s
 
 def process_html(html: str, word: str) -> str:
     html = re.sub(r'<img[^>]+>', '', html)
-    html = re.sub(r'\\n', '', html)
-    html = re.sub(r'\\t', '', html)
+    html = re.sub(r'\\n', ' ', html)
+    html = re.sub(r'\\t', ' ', html)
+    if word.endswith('.'):
+        html = html.replace('<abr>', '', 1)
+        html = html.replace('</abr>', '', 1)
 
     html = re.sub(r'(<span>[IVXL]+\.</span></span></b>)\s*(<blockquote>)?(<b>.*?</b>)(</blockquote>)?', r'\1 <span class="headword">\3</span>', html, flags=re.DOTALL)
     html = re.sub(r'<blockquote>\(<span style="color:#2F4F4F">(.*?)</span>\)</blockquote>', r' (<span class="phonetic">\1</span>)', html, flags=re.DOTALL)
@@ -30,8 +34,10 @@ def process_html(html: str, word: str) -> str:
     html = re.sub(r'(<span class="same-as">=</span>)\s+([a-zA-Z]+)', r'\1 <span class="kref">\2</span>', html)
 
     # This should separate quotations blocks in cases like "weak" where there are continuous quotations for different subsenses
+    # or cases like "which" sense 14, subsense a. where there are sub-subsenses (a) and (b).
     # or when greek letters are involved, see "fantastic". Finally combine all other blocks into one.
     html = re.sub(r'(</div>)(<div class="quotations">)(<b>[a-z]\.</b>)', r'\1 \2\3', html)
+    html = re.sub(r'(</div>)(<div class="quotations">)(<i>\([a-z]\)</i>)', r'\1 \2\3', html)
     html = re.sub(r'(</div>)(<div class="quotations">)([\u03b1-\u03c9] <b>)', r'\1 \2\3', html) # greek letters
     html = html.replace('</div><div class="quotations">', '')
 
@@ -82,7 +88,7 @@ def process_html(html: str, word: str) -> str:
     html = re.sub(r'<div class="etymology">(.*?)</div>', process_etymology, html, flags=re.S)
 
     # Heuristic approach to wrap in the forms section. note: there are multiple variations here so other forms sections found deep
-    # into an entry might not be captured. HELP WANTED
+    # into an entry might not be captured. HELP WANTED @fixme.
     html = re.sub(r'<blockquote>(Forms:?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
     html = re.sub(r'<blockquote>(Also [0-9].*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
     html = re.sub(r'<blockquote>(<abr>Pa.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
@@ -98,7 +104,7 @@ def process_html(html: str, word: str) -> str:
     html = html.replace(']</blockquote>', ']</div>')
 
     html = html.replace('<span style="color:#8B008B">', '<span class="quotes">')
-    html = re.sub(r'</span><b>([acp\?0-9])', r'</span> <b>\1', html)
+    html = re.sub(r'</span><b>(\??(<i>)?[acp0-9])', r'</span> <b>\1', html)
 
     html = re.sub(r'\{sup([a-z])\}', r'<span class="small-cap-letter">\1</span>', html)
     # Remove embedded styles and add classes to the spans
@@ -113,12 +119,15 @@ def process_html(html: str, word: str) -> str:
     html = re.sub(
         r'(<blockquote><b><span class="(?:senses|subsenses)">[a-z0-9]+\.</span></b>) (.*?\(<i>[\u03b1-\u03c9]</i>\).*?)</blockquote>',
         r'\1 <span class="forms">\2</span></blockquote>',
-        html
+        html,
+        flags=re.DOTALL
     )
 
     html = re.sub(r'</blockquote><blockquote>(\s*)(<b>)?<span class=', r'</blockquote><blockquote class="definition-partial">\1\2<span class=', html)
     html = re.sub(r'(_____</blockquote>)<blockquote>', r'\1<blockquote class="addendum">', html)
     html = re.sub(r'<blockquote>\*', '<blockquote class="subheading">*', html)
+    # This seems to be introducing some false positives, see entry "in", but overall it follows the OED pattern,
+    # so keeping it for now, however it might need to be revisited. @fixme.
     html = html.replace('</blockquote><blockquote>', '</blockquote><blockquote class="usage-note">')
 
     # see "them"'s etymology.
@@ -147,14 +156,13 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
         sys.exit(f"Error: Input TSV file not found at '{input_tsv}'")
 
     start_time = time.time()
-    source_entry_count, split_entry_count, final_entry_count, malformed_lines = 0, 0, 0, 0
+    source_entry_count, split_entry_count, final_entry_count, malformed_lines, dotted_words, dot_corrected = 0, 0, 0, 0, 0, 0
     unique_headwords = set()
 
     homograph_pattern = re.compile(f'(?={CORE_HOMOGRAPH_PATTERN})')
 
     print(f"--> Reading and processing '{input_tsv}'...")
 
-    # --- Initialize a new, empty glossary ---
     Glossary.init()
     glos = Glossary()
 
@@ -184,6 +192,28 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
                 word, definition = parts
                 unique_headwords.add(word)
 
+                entry_word = word
+                # Some of these seem to be legitimate entries, whilst others seem to have been added by a previous "editor"
+                # I'm choosing to preserve them but we need to handle some quirks.
+                if word.endswith('.'):
+                    # For some bizarre and unbeknown reason, these abbreviation entries have their definition duplicated
+                    # so we will have to verify if it is the case (it is!) and clean it up. After that we will add a synonym
+                    # entry for the headword without the leading full stop, so koreader can find it without editing.
+                    test_definition = definition.replace('\\n', '')
+                    def_len = len(test_definition)
+
+                    # sadly this method fails for some duplicated entries (about 7%, see "adj.") but it works for most of them
+                    if def_len > 0 and def_len % 2 == 0:
+                        midpoint = def_len // 2
+                        if test_definition[:midpoint] == test_definition[midpoint:]:
+                            # If it's a duplicate, the correct definition is the part
+                            # before the original newline separator.
+                            definition = ' ' + definition.split('\\n')[0]
+                            dot_corrected += 1
+                    alt_key = word.rstrip('.')
+                    entry_word = [word, alt_key]
+                    dotted_words += 1
+
                 # First, split the definition by the homograph pattern
                 split_parts = homograph_pattern.split(definition)
 
@@ -199,20 +229,20 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
                                 # The headword is missing, so we prepend it.
                                 headword_b_tag = f' <span class="headword"><b>{word}</b></span>'
                                 final_definition = processed_part.replace('</b>', '</b>' + headword_b_tag, 1)
-                            entry = Entry(word=word, defi=final_definition, defiFormat='h')
+                            entry = Entry(word=entry_word, defi=final_definition, defiFormat='h')
                             glos.addEntry(entry)
                             final_entry_count += 1
                 else: # If no splits, process the HTML of the whole definition
                     processed_definition = process_html(definition, word)
                     headword_div = f'<span class="headword"><b>{word}</b></span>'
                     final_definition = headword_div + processed_definition
-                    if re.search(r'<span class="headword"><b>[a-zA-Z\'\d \-]+</b></span><b>[a-zA-Z\u02C8\'\d \-]', final_definition): # \u02C8 is ˈ
+                    if re.search(r'<span class="headword"><b>[a-zA-Z\'\d \-\.]+</b></span><b>[a-zA-Z\u02C8\'\d \-\.]', final_definition): # \u02C8 is ˈ
                         # If the headword was already present, we don't need to prepend it, so remove it.
                         # Seems backwards to do it this way but it is much safer.
                         final_definition = final_definition.replace(headword_div, '', 1)
                         # Finally, wrap the headword in a span tag, to match the expected format.
                         final_definition = re.sub(r'<b>(.*?)</b>', r'<span class="headword"><b>\1</b></span>', final_definition, count=1)
-                    entry = Entry(word=word, defi=final_definition, defiFormat='h')
+                    entry = Entry(word=entry_word, defi=final_definition, defiFormat='h')
                     glos.addEntry(entry)
                     final_entry_count += 1
 
@@ -222,8 +252,17 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
     print("--> Processing complete. Writing Stardict files...")
 
     # And back to Stradict we go!
+    glos.setInfo("description", "This dictionary includes alternate search keys to make abbreviations searchable with and without their trailing full stops. " \
+                "This feature does not include grammatical inflections.")
+    glos.setInfo("version", "1.0")
+    glos.setInfo("date", time.strftime("%Y-%m-%d"))
     try:
         glos.write(output_ifo_name, formatName="Stardict")
+        time.sleep(2)  # Ensure the file is written before proceeding
+        syn_dz_path = Path(output_ifo_name).with_suffix('.syn.dz')
+        if syn_dz_path.is_file():
+            print(f"--> Decompressing '{syn_dz_path}'...")
+            subprocess.run(f"dictzip -d \"{syn_dz_path}\"", shell=True, check=True)
     except Exception as e:
         sys.exit(f"An error occurred during the write process: {e}")
 
@@ -235,12 +274,14 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
     print(f"Process complete. New dictionary '{output_ifo_name}.ifo' created.")
     print("----------------------------------------------------")
     print("Metrics:")
-    print(f"- Entries read from source TSV:    {source_entry_count:,}")
-    print(f"- Entries with homographs split:   {split_entry_count:,}")
-    print(f"- Unique headwords processed:      {len(unique_headwords):,}")
-    print(f"- Malformed lines skipped:         {malformed_lines:,}")
-    print(f"- Total final entries written:     {final_entry_count:,}")
-    print(f"- Total execution time:            {int(minutes):02d}:{int(seconds):02d}")
+    print(f"- Entries read from source TSV:     {source_entry_count:,}")
+    print(f"- Entries with homographs split:    {split_entry_count:,}")
+    print(f"- Unique headwords processed:       {len(unique_headwords):,}")
+    print(f"- Malformed lines skipped:          {malformed_lines:,}")
+    print(f"- Words ending in full stops found: {dotted_words:,}")
+    print(f"- Full stops corrected:             {dot_corrected:,}")
+    print(f"- Total final entries written:      {final_entry_count:,}")
+    print(f"- Total execution time:             {int(minutes):02d}:{int(seconds):02d}")
     print("----------------------------------------------------\n")
 
 
@@ -250,6 +291,6 @@ if __name__ == "__main__":
         formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument("input_tsv", type=Path, help="Path to the source .tsv file.")
-    parser.add_argument("output_ifo", type=str, help="Base name for the new output Stardict files (e.g., 'OED_2ed_split').")
+    parser.add_argument("output_ifo", type=str, help="Base name for the new output Stardict files (e.g., 'OED_2ed').")
     args = parser.parse_args()
     run_processing(args.input_tsv, args.output_ifo)
