@@ -93,16 +93,20 @@ This function is a pipeline of regular expression substitutions that transform t
 * Identifying and wrapping distinct sections like **etymology**, **forms**, and **usage notes** in `<div>` tags with appropriate classes.
 * Replacing inline color styles for sense numbers (e.g., `[1.]`, `[a.]`, `[I.]`) with semantic classes like `.senses`, `.subsenses`, and `.major-division`.
 * Standardising the formatting of dates, authors, and titles within quotation blocks.
-
-Cleaning up other miscellaneous formatting issues.
+* Cleaning up other miscellaneous formatting issues.
 
 
 ## Screnshots
 
-#### before
+#### before (e-ink)
 <img width=40% alt="Reader_THE MASTER AND MARGARITA (Penguin Classics - Mikhail Bulgakov epub_p147_2025-08-17_173921" src="https://github.com/user-attachments/assets/179e676c-2958-4fd6-a10d-b06482d23312" />
 <img width=40% alt="Reader_THE MASTER AND MARGARITA (Penguin Classics - Mikhail Bulgakov epub_p147_2025-08-17_174125" src="https://github.com/user-attachments/assets/a0a8eae5-3da7-4d0b-abf3-49ef2088cced" />
 
-#### after
+#### after (e-ink)
 <img width=40% alt="Reader_THE MASTER AND MARGARITA (Penguin Classics - Mikhail Bulgakov epub_p147_2025-08-17_173932" src="https://github.com/user-attachments/assets/9318559d-f48f-4bd5-b8a5-aa6d8c9f1a9c" />
 <img width=40% alt="Reader_THE MASTER AND MARGARITA (Penguin Classics - Mikhail Bulgakov epub_p147_2025-08-17_174115" src="https://github.com/user-attachments/assets/7cae28c0-4a17-449a-ab15-93acc4c89aef" />
+
+#### after (colour - homographs)
+<img width=40% alt="Reader_herman-melville_moby-dick epub_p41_2025-08-18_005138" src="https://github.com/user-attachments/assets/54080a17-4543-4e59-94f8-a004311c463a" />
+<img width=40% alt="Reader_herman-melville_moby-dick epub_p41_2025-08-18_005051" src="https://github.com/user-attachments/assets/9bd50a9e-f59f-4eec-a21d-7f2dc49a9046" />
+
