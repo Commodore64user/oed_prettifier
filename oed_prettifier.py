@@ -27,8 +27,6 @@ def process_html(html: str, word: str) -> str:
     html = re.sub(r'(<span class="obsolete">†</span>)\s', r'\1', html)
     html = re.sub(r'<abr>¶</abr>', '<span class="pilcrow">¶</span>', html)
     html = re.sub(r'(<span class="pilcrow">¶</span>)\s', r'\1', html)
-    html = html.replace('<abr>', '<span class="abbreviation">')
-    html = html.replace('</abr>', '</span>')
     html = re.sub(r'<kref>(.*?)</kref>', r'<span class="kref">\1</span>', html)
     html = html.replace('<abr>=</abr>', '<span class="same-as">=</span>')
     # This is a liberty I've taken, which will capture some false positives (relative to the original OED text, see entry "them" section II. 4),
@@ -147,6 +145,18 @@ def process_html(html: str, word: str) -> str:
     html = html.replace('{ddd}', '...')
     # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
     html = re.sub(r'\u2013 [,\.]', f'\u2013 <b>{word}</b>.', html) # n-dash –
+
+    html = html.replace('<abr>', '<span class="abbreviation">')
+    html = html.replace('</abr>', '</span>')
+    # Although we cannot fully restore all the original editorial minutiae, this pattern is reliable.
+    # Authors presented as initial(s) + surname are always capitalised in the OED. However, other
+    # names are capitalised as well, so this approach is not comprehensive. For example, "JOYCE"
+    # (James Joyce) appears in uppercase but is presented as "JOYCE", not "J. JOYCE". see "other" sense 2 subsense f.
+    def uppercase_author(match):
+        first_initial, second_initial, surname = match.groups()
+        second_initial = second_initial if second_initial else ''
+        return f'<span class="author">{first_initial} {second_initial} {surname.upper()}</span>'
+    html = re.sub(r'<span class="author">([A-Z]\.)\s*([A-Z]\.)?\s*([\w]+)</span>', uppercase_author, html)
 
     return html
 
