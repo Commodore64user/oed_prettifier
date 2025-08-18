@@ -1,15 +1,20 @@
 # OED Stardict Prettifier
 
-A Python script designed to process a TSV (Tab-Separated Values) export of the Oxford English Dictionary (OED), clean up its HTML formatting, split homographs into separate entries, and generate a well-structured Stardict dictionary.
+A Python script designed to process a TSV (Tab-Separated Values) export of the Oxford English Dictionary (OED), clean up its HTML formatting, split homographs into separate entries, and generate a well-structured Stardict dictionary. Note, the OED is **not** provided here, you must supply your own copy to use this tool.
 
 ## Description
 
-The original OED 2ed originally published in 1989, has been converted to Stardict however it contains messy HTML with inline styles, inconsistent structures, and multiple homographs merged into a single entry. This script addresses these issues by:
+The Oxford English Dictionary 2ed (originally published in 1989), which has been converted to Stardict, contains messy HTML with inline styles, inconsistent structures, and multiple homographs merged into a single entry. This script addresses these issues by:
 
-* **Splitting Homographs**: It correctly identifies and separates distinct homographs (words with the same spelling but different meanings) into individual dictionary entries.
+* **Splitting Homographs**: It correctly identifies and separates distinct homographs (words with the same spelling but different meanings and origins) into individual dictionary entries.
 * **Cleaning & Structuring HTML**: It uses a series of regular expressions to replace inline CSS styles with semantic class names, structure the entry content (e.g., etymology, forms, quotations), and clean up various formatting quirks.
-* **Handling Abbreviations**: It correctly processes entries that are abbreviations and creates alternative search keys without the full stop for easier look-up in KOReader.
+* **Handling Abbreviations**: It correctly processes entries that are abbreviations and creates alternative search keys (stardict synonyms) without the full stop for easier look-up in KOReader.
 * **Generating Stardict Files**: It uses the `pyglossary` library to write the processed data into a complete set of Stardict dictionary files (`.ifo`, `.dict.dz`, `.idx`, `.syn`).
+
+## Editorial notes
+
+* **Adherence to source**: I have aimed to remain as close as possible to the original presentation and style of the source. Any entry can be verified through the OED website (subscription or library card required). For the second edition, click the 'entry history' link (top left of any headword) and select ‘view in OED Second Edition’. I have, however, introduced a few slight alterations to improve readability on e-ink screens. The most notable is the encapsulation of the etymology, making it easier to identify where to begin reading each entry.
+* **Editorial limitations**: Despite extensive efforts, it has proven nearly impossible to achieve a perfect 1:1 correspondence with the original OED entries. Through [previous] conversion processes, minor details and editorial nuances have been lost that could realistically only be recovered through manual revision of each individual entry (and that would take _years_). A typical example occurs in the quotations section, where the OED prints authors' names in uppercase when a work is attributed to a specific individual, restoring this formatting requires far more than simple pattern recognition.
 
 The ultimate goal is to produce a "prettified" and more usable version of the OED for dictionary applications like GoldenDict or KOReader, which use the Stardict format.
 
@@ -17,25 +22,19 @@ The ultimate goal is to produce a "prettified" and more usable version of the OE
 
 To run this script, you will need:
 
-* **Python 3.9+**
-* **PyGlossary**: A Python library for converting dictionary formats.
-* **dictzip**: A command-line tool for compressing Stardict dictionary files. It is part of the `dictd` package on most Linux distributions.
+* Python 3.9+
+* PyGlossary: A Python library for converting dictionary formats.
+* dictzip: A command-line tool for compressing Stardict dictionary files. It is part of the `dictd` package on most Linux distributions.
 
-## Installation
+## Installation (on macOS)
 
-**Clone or download the script.**
+Clone or download the script.
 
 **Install PyGlossary:**
 ```bash
-pip install pyglossary
+python3 pip install pyglossary
 ```
 
-**Install dictzip:**
-* **On Debian/Ubuntu:**
-```bash
-sudo apt-get update
-sudo apt-get install dictzip
-```
 * **On macOS (using Homebrew):**
 ```bash
 brew install dictzip
@@ -68,6 +67,7 @@ python oed_prettifier.py <input_tsv_path> <output_ifo_name>
 python3.13 oed_prettifier.py /dictionaries/OED_raw.tsv OED_2ed_prettified
 ```
 
+Once the conversion has finished, grab the `OED_2ed.css` file from this repo and rename it to the same name you gave your files (`OED_2ed_prettified` in the previous example). Now you should be ready to enjoy reading your brand new Stardict version of the OED.
 
 ## How It Works
 

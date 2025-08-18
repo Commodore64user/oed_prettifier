@@ -50,6 +50,10 @@ blockquote.etymology-notes {
     color: #0066cc; /* was dark magenta 8B008B*/
 }
 
+/* part of speech */
+.pos {
+    color: #000000;
+}
 .major-division {
     color: #070707; /* was dark indigo 4B0082*/
 }
@@ -69,3 +73,6 @@ blockquote.etymology-notes {
     font-size: 0.75em;
     text-transform: uppercase;
 }
+/* .abbreviation {
+    color: #7d7c7c;
+} */

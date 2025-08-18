@@ -27,6 +27,8 @@ def process_html(html: str, word: str) -> str:
     html = re.sub(r'(<span class="obsolete">†</span>)\s', r'\1', html)
     html = re.sub(r'<abr>¶</abr>', '<span class="pilcrow">¶</span>', html)
     html = re.sub(r'(<span class="pilcrow">¶</span>)\s', r'\1', html)
+    html = html.replace('<abr>', '<span class="abbreviation">')
+    html = html.replace('</abr>', '</span>')
     html = re.sub(r'<kref>(.*?)</kref>', r'<span class="kref">\1</span>', html)
     html = html.replace('<abr>=</abr>', '<span class="same-as">=</span>')
     # This is a liberty I've taken, which will capture some false positives (relative to the original OED text, see entry "them" section II. 4),
@@ -43,7 +45,7 @@ def process_html(html: str, word: str) -> str:
 
     html = re.sub(r'(<b>)<span style="color:#8B008B">▪ <span>([IVXL]+)\.</span></span>(</b>)', r'\1<sup>\2</sup>\3', html)
     # Fix dates, only match exactly 3 or 4 digit years. This should turn "c 1500" into "c1500" or "? a 1300" into "?a1300".
-    html = re.sub(r'<b>(\?)?\s?<i>([acp])</i> (\d{3,4})</b>', r'<b>\1<i>\2</i>\3</b>', html)
+    html = re.sub(r'<b>(\?)?\s?<i>([acp])</i> (\d{3,4})(\u2013\d{2})?</b>', r'<b>\1<i>\2</i>\3\4</b>', html)
     html = re.sub(
         r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+([^\s<]+(?:\s+[^\s<]+)*?)\s+(?=in\s+<i>|<i>)',
         r'\1 <span class="author">\4</span> ',
@@ -254,7 +256,6 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
     # And back to Stradict we go!
     glos.setInfo("description", "This dictionary includes alternate search keys to make abbreviations searchable with and without their trailing full stops. " \
                 "This feature does not include grammatical inflections.")
-    glos.setInfo("version", "1.0")
     glos.setInfo("date", time.strftime("%Y-%m-%d"))
     try:
         glos.write(output_ifo_name, formatName="Stardict")
