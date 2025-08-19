@@ -4,6 +4,9 @@
     color: #dc143c; /* crimson dc143c */
     font-size: 1.2em;
 }
+.headword span.abbreviation {
+    color: #dc143c;
+}
 blockquote {
     margin: 0;
 }
@@ -43,9 +46,10 @@ blockquote.etymology-notes {
     padding: 0.5em;
     font-size: 0.7em; /* adjust as needed currently 70% */
 }
-/* .author {
-    color: #a600ff;
-} */
+.author {
+    /* color: #ff00ae; for testing only */
+    font-variant: small-caps;
+}
 .quotes {
     color: #0066cc; /* was dark magenta 8B008B*/
 }

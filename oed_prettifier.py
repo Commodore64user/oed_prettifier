@@ -38,22 +38,26 @@ def process_html(html: str, word: str) -> str:
     # or when greek letters are involved, see "fantastic". Finally combine all other blocks into one.
     html = re.sub(r'(</div>)(<div class="quotations">)(<b>[a-z]\.</b>)', r'\1 \2\3', html)
     html = re.sub(r'(</div>)(<div class="quotations">)(<i>\([a-z]\)</i>)', r'\1 \2\3', html)
+    html = re.sub(r'(</div>)(<div class="quotations">)(<i><abr>[a-z]</abr></i>)', r'\1 \2\3', html)
     html = re.sub(r'(</div>)(<div class="quotations">)([\u03b1-\u03c9] <b>)', r'\1 \2\3', html) # greek letters
     html = html.replace('</div><div class="quotations">', '')
 
     html = re.sub(r'(<b>)<span style="color:#8B008B">▪ <span>([IVXL]+)\.</span></span>(</b>)', r'\1<sup>\2</sup>\3', html)
     # Fix dates, only match exactly 3 or 4 digit years. This should turn "c 1500" into "c1500" or "? a 1300" into "?a1300".
     html = re.sub(r'<b>(\?)?\s?<i>([acp])</i> (\d{3,4})(\u2013\d{2})?</b>', r'<b>\1<i>\2</i>\3\4</b>', html)
+    # Handle anonymous "in Source" patterns first, we add a placeholder which will be removed later.
     html = re.sub(
-        r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+([^\s<]+(?:\s+[^\s<]+)*?)\s+(?=in\s+<i>|<i>)',
+        r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+((?:in\s+[^<]*|―\s+)<i>.*?</i>)',
+        r'\1 <ANON_IN_SOURCE>\4</ANON_IN_SOURCE>',
+        html
+    )
+    html = re.sub(
+        r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+([^\s<]+(?:\s+[^\s<]+)*?)\s+(?=in\s+<i>|<i>|in|\(\w+\))',
         r'\1 <span class="author">\4</span> ',
         html
     )
     html = re.sub(
-        r'(<span class="author">[^<]*</span>)\s+((?:in\s+)?<i>[^<]*</i>)',
-        r'\1 <span class="title">\2</span>',
-        html
-    )
+        r'(<span class="author">[^<]*</span>)\s+((?:in\s+)?<i>[^<]*</i>)', r'\1 <span class="title">\2</span>', html)
     html = re.sub( # Handle author + number reference pattern (like Ormin 9500)
         r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>)\s+([^\s<]+(?:\s+[^\s<]+)*)\s+(\d+)\s+<span style="color:#8B008B">',
         r'\1 <span class="author">\3</span> <span class="reference">\4</span> <span style="color:#8B008B">',
@@ -105,6 +109,7 @@ def process_html(html: str, word: str) -> str:
 
     html = html.replace('<span style="color:#8B008B">', '<span class="quotes">')
     html = re.sub(r'</span><b>(\??(<i>)?[acp0-9])', r'</span> <b>\1', html)
+    html = re.sub(r'(<span class="quotes">.*?</span>)(<[^>]+>)', r'\1 \2', html)
 
     html = re.sub(r'\{sup([a-z])\}', r'<span class="small-cap-letter">\1</span>', html)
     # Remove embedded styles and add classes to the spans
@@ -143,20 +148,30 @@ def process_html(html: str, word: str) -> str:
         return accent_map.get(letter, match.group(0))
     html = re.sub(r'\{([aeiou])acu\}', replace_acute, html)
     html = html.replace('{ddd}', '...')
+    html = re.sub(r'⊇', 'e', html)
     # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
     html = re.sub(r'\u2013 [,\.]', f'\u2013 <b>{word}</b>.', html) # n-dash –
 
+    html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
+    # Handle "Author abbreviation." pattern (like "Francis tr.")
+    html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) ((?:[\w]\.)?\s?[\w]+)\s(<abr>[\w]+\.</abr>)(\s<i>)', r'\1 <span class="author">\3</span> \4\5', html)
+    # Handle specific "Initial Author (Source) Number" pattern
+    html = re.sub(
+        r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) ([A-Z]\.)\s<abr>([\w]+\.)</abr>\s(\([^)]+\))\s([0-9]+)',
+        r'\1 <span class="author">\2 \3</span> \4 \5',
+        html
+    )
+    # This grew out of control, but is seems to be held together by fairy dust, it works although this should have been done is a more structured way.
+    html = re.sub(
+        r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) ([^<]*)?<abr>([\w]+\.)</abr>\s([\w]+)?\s?((<i>)?[0-9]?\s?)(<i>|<abr>)',
+        r'\1 <span class="author">\2\3 \4</span> \5\7',
+        html
+    )
+    # Finally, convert the placeholder back
+    html = re.sub(r'<ANON_IN_SOURCE>(in\s+<i>.*?</i>)</ANON_IN_SOURCE>', r'\1', html)
+    html = re.sub(r'<span class="translator">tr.</span>', '<abr>tr.</abr>', html)
     html = html.replace('<abr>', '<span class="abbreviation">')
     html = html.replace('</abr>', '</span>')
-    # Although we cannot fully restore all the original editorial minutiae, this pattern is reliable.
-    # Authors presented as initial(s) + surname are always capitalised in the OED. However, other
-    # names are capitalised as well, so this approach is not comprehensive. For example, "JOYCE"
-    # (James Joyce) appears in uppercase but is presented as "JOYCE", not "J. JOYCE". see "other" sense 2 subsense f.
-    def uppercase_author(match):
-        first_initial, second_initial, surname = match.groups()
-        second_initial = second_initial if second_initial else ''
-        return f'<span class="author">{first_initial} {second_initial} {surname.upper()}</span>'
-    html = re.sub(r'<span class="author">([A-Z]\.)\s*([A-Z]\.)?\s*([\w]+)</span>', uppercase_author, html)
 
     return html
 
@@ -208,6 +223,8 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
                 # Some of these seem to be legitimate entries, whilst others seem to have been added by a previous "editor"
                 # I'm choosing to preserve them but we need to handle some quirks.
                 if word.endswith('.'):
+                    if word == "Prov.":
+                        definition = "<br/>proverb, (in the Bible) Proverbs"
                     # For some bizarre and unbeknown reason, these abbreviation entries have their definition duplicated
                     # so we will have to verify if it is the case (it is!) and clean it up. After that we will add a synonym
                     # entry for the headword without the leading full stop, so koreader can find it without editing.
@@ -220,7 +237,7 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
                         if test_definition[:midpoint] == test_definition[midpoint:]:
                             # If it's a duplicate, the correct definition is the part
                             # before the original newline separator.
-                            definition = ' ' + definition.split('\\n')[0]
+                            definition = '<br/>' + definition.split('\\n')[0]
                             dot_corrected += 1
                     alt_key = word.rstrip('.')
                     entry_word = [word, alt_key]

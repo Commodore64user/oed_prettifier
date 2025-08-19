@@ -14,9 +14,9 @@ The Oxford English Dictionary 2ed (originally published in 1989), which has been
 ## Editorial notes
 
 * **Adherence to source**: I have aimed to remain as close as possible to the original presentation and style of the source. Any entry can be verified through the OED website (subscription or library card required). For the second edition, click the 'entry history' link (top left of any headword) and select ‘view in OED Second Edition’. I have, however, introduced a few slight alterations to improve readability on e-ink screens. The most notable is the encapsulation of the etymology, making it easier to identify where to begin reading each entry.
-* **Editorial limitations**: Despite extensive efforts, it has proven nearly impossible to achieve a perfect 1:1 correspondence with the original OED entries. Through [previous] conversion processes, minor details and editorial nuances have been lost that could realistically only be recovered through manual revision of each individual entry (and that would take _years_). A typical example occurs in the quotations section, where the OED prints authors' names in uppercase when a work is attributed to a specific individual, restoring this formatting requires far more than simple pattern recognition.
+* **Editorial limitations**: Despite extensive efforts, it has been difficult to achieve a perfect 1:1 correspondence with the original OED entries. Through [previous] conversion processes, minor details and editorial nuances have been lost that could realistically only be recovered through manual revision of each individual entry (and that would take _years_). Note: Do not solely rely on this Stardict version if you must make professional citations, do visit the OED website to always make sure all information is correct and up to date.
 
-The ultimate goal is to produce a "prettified" and more usable version of the OED for dictionary applications like GoldenDict or KOReader, which use the Stardict format.
+The ultimate goal is to produce a "prettified" and more usable version of the OED for applications like GoldenDict or KOReader, which use the Stardict format.
 
 ## Dependencies
 
