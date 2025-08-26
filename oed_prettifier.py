@@ -38,8 +38,10 @@ def process_html(html: str, word: str) -> str:
     # or when greek letters are involved, see "fantastic". Finally combine all other blocks into one.
     html = re.sub(r'(</div>)(<div class="quotations">)(<b>[a-z]\.</b>)', r'\1 \2\3', html)
     html = re.sub(r'(</div>)(<div class="quotations">)(<i>\([a-z]\)</i>)', r'\1 \2\3', html)
-    html = re.sub(r'(</div>)(<div class="quotations">)(<i><abr>[a-z]</abr></i>)', r'\1 \2\3', html)
+    html = re.sub(r'(</div>)(<div class="quotations">)(<i><abr>[a-zA-Z]+\.</abr></i>)', r'\1 \2\3', html) # weak 2.a
+    html = re.sub(r'(</div>)(<div class="quotations">)(<i>[a-zA-Z]+\.?(?:[-\s][a-zA-Z]+\.)?</i>)', r'\1 \2\3', html) # weak 5.a
     html = re.sub(r'(</div>)(<div class="quotations">)([\u03b1-\u03c9] <b>)', r'\1 \2\3', html) # greek letters
+    html = re.sub(r'(</div>)(<div class="quotations">)(<b>)', r'\1\2 \3', html)
     html = html.replace('</div><div class="quotations">', '')
 
     html = re.sub(r'(<b>)<span style="color:#8B008B">▪ <span>([IVXL]+)\.</span></span>(</b>)', r'\1<sup>\2</sup>\3', html)
@@ -52,7 +54,7 @@ def process_html(html: str, word: str) -> str:
         html
     )
     html = re.sub(
-        r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+([^\s<]+(?:\s+[^\s<]+)*?)\s+(?=in\s+<i>|<i>|in|\(\w+\))',
+        r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+([^\s<]+(?:\s+[^\s<]+)*?)\s+(?=in\s+<i>|<i>|in|\(\w)',
         r'\1 <span class="author">\4</span> ',
         html
     )
@@ -99,6 +101,7 @@ def process_html(html: str, word: str) -> str:
     html = re.sub(r'<blockquote>(Past and <abr>pple.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
     html = re.sub(r'<blockquote>(Pl. <b>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
     html = re.sub(r'<blockquote>(Usually in <abr>pl.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
+    html = re.sub(r'<blockquote>(commonly in (?:<i>)?<abr>pl.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
     # sometimes the 'forms' section is placed below its normal location and is preceded by a greek letter, e.g., "α", so we need to capture that too.
     html = re.sub(r'<blockquote>(\(<i>[\u03b1-\u03c9]</i>\).*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
     html = re.sub(r'<blockquote>([\u03b1-\u03c9]<sup>[0-9]</sup>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL) # greek letters
@@ -148,6 +151,8 @@ def process_html(html: str, word: str) -> str:
         return accent_map.get(letter, match.group(0))
     html = re.sub(r'\{([aeiou])acu\}', replace_acute, html)
     html = html.replace('{ddd}', '...')
+    html = html.replace('{oqq}', '\u201C')  # Left double quotation mark
+    html = html.replace('{cqq}', '\u201D')  # Right double quotation mark
     html = re.sub(r'⊇', 'e', html)
     # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
     html = re.sub(r'\u2013 [,\.]', f'\u2013 <b>{word}</b>.', html) # n-dash –
@@ -168,7 +173,15 @@ def process_html(html: str, word: str) -> str:
         html
     )
     # Finally, convert the placeholder back
-    html = re.sub(r'<ANON_IN_SOURCE>(in\s+<i>.*?</i>)</ANON_IN_SOURCE>', r'\1', html)
+    html = re.sub(r'<ANON_IN_SOURCE>', '', html)
+    html = re.sub(r'</ANON_IN_SOURCE>', '', html)
+    def fix_author_tr(match):
+        content = match.group(0)
+        if ' tr.' in content:
+            return re.sub(r'<span class="author">(.*?) (tr\.(?:\s)*)</span>', r'<span class="author">\1</span> \2', content)
+        return content
+    html = re.sub(r'<span class="author">.*?</span>', fix_author_tr, html)
+
     html = re.sub(r'<span class="translator">tr.</span>', '<abr>tr.</abr>', html)
     html = html.replace('<abr>', '<span class="abbreviation">')
     html = html.replace('</abr>', '</span>')
@@ -225,6 +238,8 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
                 if word.endswith('.'):
                     if word == "Prov.":
                         definition = "<br/>proverb, (in the Bible) Proverbs"
+                    elif word == "Div.":
+                        definition = "<br/>division, divinity"
                     # For some bizarre and unbeknown reason, these abbreviation entries have their definition duplicated
                     # so we will have to verify if it is the case (it is!) and clean it up. After that we will add a synonym
                     # entry for the headword without the leading full stop, so koreader can find it without editing.
@@ -265,12 +280,15 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
                     processed_definition = process_html(definition, word)
                     headword_div = f'<span class="headword"><b>{word}</b></span>'
                     final_definition = headword_div + processed_definition
-                    if re.search(r'<span class="headword"><b>[a-zA-Z\'\d \-\.]+</b></span><b>[a-zA-Z\u02C8\'\d \-\.]', final_definition): # \u02C8 is ˈ
+                    if re.search(r'<span class="headword"><b>[a-zA-Z\'\d \-\.]+</b></span><b>(<span class="abbreviation">‖</span>\s)?[a-zA-Z\u02C8\'\d \-\.]', final_definition): # \u02C8 is ˈ
                         # If the headword was already present, we don't need to prepend it, so remove it.
                         # Seems backwards to do it this way but it is much safer.
                         final_definition = final_definition.replace(headword_div, '', 1)
                         # Finally, wrap the headword in a span tag, to match the expected format.
                         final_definition = re.sub(r'<b>(.*?)</b>', r'<span class="headword"><b>\1</b></span>', final_definition, count=1)
+                    elif re.search(r'<span class="headword"><b>[a-zA-Z\'\d \-\.]+</b></span>[\w]', final_definition):
+                        # some entries (see "gen") need some space
+                        final_definition = final_definition.replace(headword_div, headword_div + ' ', 1)
                     entry = Entry(word=entry_word, defi=final_definition, defiFormat='h')
                     glos.addEntry(entry)
                     final_entry_count += 1
