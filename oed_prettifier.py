@@ -23,10 +23,8 @@ def process_html(html: str, word: str) -> str:
     html = html.replace('<blockquote><ex>', '<div class="quotations">')
     html = html.replace('</ex></blockquote>', '</div>')
 
-    html = re.sub(r'<abr>†</abr>', '<span class="obsolete">†</span>', html)
-    html = re.sub(r'(<span class="obsolete">†</span>)\s', r'\1', html)
-    html = re.sub(r'<abr>¶</abr>', '<span class="pilcrow">¶</span>', html)
-    html = re.sub(r'(<span class="pilcrow">¶</span>)\s', r'\1', html)
+    html = re.sub(r'(<abr>†</abr>)\s', r'\1', html)
+    html = re.sub(r'(<abr>¶</abr>)\s', r'\1', html)
     html = re.sub(r'<kref>(.*?)</kref>', r'<span class="kref">\1</span>', html)
     html = html.replace('<abr>=</abr>', '<span class="same-as">=</span>')
     # This is a liberty I've taken, which will capture some false positives (relative to the original OED text, see entry "them" section II. 4),
@@ -40,13 +38,14 @@ def process_html(html: str, word: str) -> str:
     html = re.sub(r'(</div>)(<div class="quotations">)(<i>\([a-z]\)</i>)', r'\1 \2\3', html)
     html = re.sub(r'(</div>)(<div class="quotations">)(<i><abr>[a-zA-Z]+\.</abr></i>)', r'\1 \2\3', html) # weak 2.a
     html = re.sub(r'(</div>)(<div class="quotations">)(<i>[a-zA-Z]+\.?(?:[-\s][a-zA-Z]+\.)?</i>)', r'\1 \2\3', html) # weak 5.a
-    html = re.sub(r'(</div>)(<div class="quotations">)([\u03b1-\u03c9] <b>)', r'\1 \2\3', html) # greek letters
+    html = re.sub(r'(</div>)(<div class="quotations">)([\u03b1-\u03c9](?:<sup>[0-9]</sup>)? <b>)', r'\1 \2\3', html) # greek letters
     html = re.sub(r'(</div>)(<div class="quotations">)(<b>)', r'\1\2 \3', html)
     html = html.replace('</div><div class="quotations">', '')
 
     html = re.sub(r'(<b>)<span style="color:#8B008B">▪ <span>([IVXL]+)\.</span></span>(</b>)', r'\1<sup>\2</sup>\3', html)
     # Fix dates, only match exactly 3 or 4 digit years. This should turn "c 1500" into "c1500" or "? a 1300" into "?a1300".
     html = re.sub(r'<b>(\?)?\s?<i>([acp])</i> (\d{3,4})(\u2013\d{2})?</b>', r'<b>\1<i>\2</i>\3\4</b>', html)
+    html = re.sub(r'<b>(\?)?\s?(\d{3,4})(\u2013\d{2})?</b>', r'<b>\1\2\3</b>', html)
     # Handle anonymous "in Source" patterns first, we add a placeholder which will be removed later.
     html = re.sub(
         r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+((?:in\s+[^<]*|―\s+)<i>.*?</i>)',
@@ -123,6 +122,7 @@ def process_html(html: str, word: str) -> str:
     html = re.sub(r'<span style="color:#4B0082">(\[?[IVXL]+\.\]?) (\[?[0-9]+\.\]?)</span>', r'<span class="major-division">\1</span> <span class="senses">\2</span>', html)
     html = re.sub(r'<span style="color:#4B0082">(\[?[IVXL]+\.\]?)</span>', r'<span class="major-division">\1</span>', html)
     html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?)</span>', r'<span class="pos">\1</span>', html)
+    html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[IVXL]+\.\]?)</span>', r'<span class="pos">\1</span> <span class="major-division">\2</span>', html)
 
     html = re.sub(
         r'(<blockquote><b><span class="(?:senses|subsenses)">[a-z0-9]+\.</span></b>) (.*?\(<i>[\u03b1-\u03c9]</i>\).*?)</blockquote>',
@@ -146,10 +146,11 @@ def process_html(html: str, word: str) -> str:
             'e': '\u00e9',  # é
             'i': '\u00ed',  # í
             'o': '\u00f3',  # ó
-            'u': '\u00fa'   # ú
+            'u': '\u00fa',  # ú
+            'y': '\u00fd'   # ý
         }
         return accent_map.get(letter, match.group(0))
-    html = re.sub(r'\{([aeiou])acu\}', replace_acute, html)
+    html = re.sub(r'\{([aeiouy])acu\}', replace_acute, html)
     html = html.replace('{ddd}', '...')
     html = html.replace('{oqq}', '\u201C')  # Left double quotation mark
     html = html.replace('{cqq}', '\u201D')  # Right double quotation mark
@@ -235,7 +236,7 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
                 entry_word = word
                 # Some of these seem to be legitimate entries, whilst others seem to have been added by a previous "editor"
                 # I'm choosing to preserve them but we need to handle some quirks.
-                if word.endswith('.'):
+                if word.endswith(('.', '‖', '¶', '†')):
                     if word == "Prov.":
                         definition = "<br/>proverb, (in the Bible) Proverbs"
                     elif word == "Div.":
@@ -280,7 +281,7 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
                     processed_definition = process_html(definition, word)
                     headword_div = f'<span class="headword"><b>{word}</b></span>'
                     final_definition = headword_div + processed_definition
-                    if re.search(r'<span class="headword"><b>[a-zA-Z\'\d \-\.]+</b></span><b>(<span class="abbreviation">‖</span>\s)?[a-zA-Z\u02C8\'\d \-\.]', final_definition): # \u02C8 is ˈ
+                    if re.search(r'<span class="headword"><b>(.*?)</b></span><b>(<span class="abbreviation">[‖¶†]</span>\s)?[a-zA-Z\u02C8\'\d \-\.]', final_definition): # \u02C8 is ˈ
                         # If the headword was already present, we don't need to prepend it, so remove it.
                         # Seems backwards to do it this way but it is much safer.
                         final_definition = final_definition.replace(headword_div, '', 1)
