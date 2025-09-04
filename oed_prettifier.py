@@ -64,6 +64,12 @@ def process_html(html: str, word: str) -> str:
         r'\1 <span class="author">\3</span> <span class="reference">\4</span> <span style="color:#8B008B">',
         html
     )
+    html = re.sub( # Handle author + number line-number pattern (like Lay. 3014)
+        r'(<b>(?:\?)?(?:<i>[acp]</i>\s?)?(\d{3,4})</b>)\s+<abr>([^<]+)</abr>\s+(\d+)\s+<span style="color:#8B008B">',
+        r'\1 <span class="author">\3</span> <span class="line-number">\4</span> <span style="color:#8B008B">',
+        html
+    )
+
     # html = re.sub(
     #     r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+([^\s<,]+(?:\s+[^\s<,]+)*),\s+<span class="quotes">',
     #     r'\1 <span class="author">\4</span>, <span class="quotes">',
@@ -167,7 +173,7 @@ def process_html(html: str, word: str) -> str:
         r'\1 <span class="author">\2 \3</span> \4 \5',
         html
     )
-    # This grew out of control, but is seems to be held together by fairy dust, it works although this should have been done is a more structured way.
+    # This grew out of control, but is seems to be held together by fairy dust, it works although this should have been done in a more structured way.
     html = re.sub(
         r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) ([^<]*)?<abr>([\w]+\.)</abr>\s([\w]+)?\s?((<i>)?[0-9]?\s?)(<i>|<abr>)',
         r'\1 <span class="author">\2\3 \4</span> \5\7',
@@ -281,7 +287,7 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
                     processed_definition = process_html(definition, word)
                     headword_div = f'<span class="headword"><b>{word}</b></span>'
                     final_definition = headword_div + processed_definition
-                    if re.search(r'<span class="headword"><b>(.*?)</b></span><b>(<span class="abbreviation">[‖¶†]</span>\s)?[a-zA-Z\u02C8\'\d \-\.]', final_definition): # \u02C8 is ˈ
+                    if re.search(r'<span class="headword"><b>(.*?)</b></span><b>(<span class="abbreviation">[‖¶†]</span>\s)?[a-zA-Z\u00C0-\u017F\u0180-\u024F\u02C8\'\d \-\.]', final_definition): # \u02C8 is ˈ
                         # If the headword was already present, we don't need to prepend it, so remove it.
                         # Seems backwards to do it this way but it is much safer.
                         final_definition = final_definition.replace(headword_div, '', 1)
