@@ -4,16 +4,25 @@ import sys
 import time
 import subprocess
 from pathlib import Path
+from bs4 import BeautifulSoup
 from pyglossary.glossary_v2 import Glossary
 from pyglossary.entry import Entry
 
 CORE_HOMOGRAPH_PATTERN = r'<b><span style="color:#8B008B">▪ <span>[IVXL]+\.</span></span></b>'
 
-def process_html(html: str, word: str) -> str:
+SYNONYM_CLEANUP_MAP = {
+    "†": "",   "*": "",   "ˈ": "",   "ˌ": "",   "(": "",   ")": "",   "[": "",   "]": "",   "‖": "",   "¶": "",   "?": "",   "!": "",
+    "–": "",
+}
+
+IGNORED_SYN_WORDS = {'to', 'or', 'and', 'a', 'an', 'the', 'after', 'before', 'in', 'on', 'at', 'for', 'with', 'by', 'of', 'from', 'Derivatives.',
+                        'that', 'which', 'who', 'whom', 'whose', 'as', 'than', 'like', 'such', 'so', 'but', 'if', 'when', 'up', 'down', 'Compounds.'}
+
+def process_html(html: str, headword: str) -> str:
     html = re.sub(r'<img[^>]+>', '', html)
     html = re.sub(r'\\n', ' ', html)
     html = re.sub(r'\\t', ' ', html)
-    if word.endswith('.'):
+    if headword.endswith('.'):
         html = html.replace('<abr>', '', 1)
         html = html.replace('</abr>', '', 1)
 
@@ -65,7 +74,7 @@ def process_html(html: str, word: str) -> str:
         html
     )
     html = re.sub( # Handle author + number line-number pattern (like Lay. 3014)
-        r'(<b>(?:\?)?(?:<i>[acp]</i>\s?)?(\d{3,4})</b>)\s+<abr>([^<]+)</abr>\s+(\d+)\s+<span style="color:#8B008B">',
+        r'(<b>(?:\?)?(?:<i>[acp]</i>\s?)?(\d{3,4})</b>)\s+((?:[A-Z]+\.)?\s?<abr>[^<]+</abr>)\s+(\d+)\s+<span style="color:#8B008B">',
         r'\1 <span class="author">\3</span> <span class="line-number">\4</span> <span style="color:#8B008B">',
         html
     )
@@ -120,6 +129,7 @@ def process_html(html: str, word: str) -> str:
     html = re.sub(r'(<span class="quotes">.*?</span>)(<[^>]+>)', r'\1 \2', html)
 
     html = re.sub(r'\{sup([a-z])\}', r'<span class="small-cap-letter">\1</span>', html)
+    html = re.sub(r'(</blockquote>)(<blockquote><abr>†</abr>\s*<b><span style="color:#4B0082">)', r'\1 \2', html)
     # Remove embedded styles and add classes to the spans
     html = re.sub(r'<span style="color:#4B0082">(\[?[0-9]+\.\]?)</span>', r'<span class="senses">\1</span>', html)
     html = re.sub(r'<span style="color:#4B0082">(\[?[a-z]\.\]?)</span>', r'<span class="subsenses">\1</span>', html)
@@ -162,7 +172,7 @@ def process_html(html: str, word: str) -> str:
     html = html.replace('{cqq}', '\u201D')  # Right double quotation mark
     html = re.sub(r'⊇', 'e', html)
     # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
-    html = re.sub(r'\u2013 [,\.]', f'\u2013 <b>{word}</b>.', html) # n-dash –
+    html = re.sub(r'\u2013 ([,;\.])', f'– <b>{re.escape(headword)}</b>' + r'\1', html) # n-dash –
 
     html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
     # Handle "Author abbreviation." pattern (like "Francis tr.")
@@ -195,8 +205,69 @@ def process_html(html: str, word: str) -> str:
 
     return html
 
+def clean_synonym(text: str) -> str:
+    """Removes unwanted characters from a potential synonym string."""
+    for char, replacement in SYNONYM_CLEANUP_MAP.items():
+        text = text.replace(char, replacement)
+    return text.strip()
 
-def run_processing(input_tsv: Path, output_ifo_name: str):
+def extract_synonyms(headword: str, html: str) -> list[str]:
+    soup = BeautifulSoup(html, 'html.parser')
+    cleaned_syns = set()
+    headword = clean_synonym(headword.strip())
+    word_initial = headword[:1]
+
+    # Find and remove all quotation divs from the parse tree.
+    for div in soup.find_all('div', class_='quotations'):
+        div.decompose()
+
+    for b_tag in soup.find_all('b'):
+        final_synonym = clean_synonym(b_tag.get_text().strip())
+
+        if not final_synonym or final_synonym in IGNORED_SYN_WORDS:
+            continue
+        if final_synonym.startswith('-') or final_synonym.endswith('-'):
+            continue
+        if re.search(r'\d{2,}', final_synonym):
+            continue
+        if re.fullmatch(r'[IVXL]+\.', final_synonym):
+            continue
+        if re.fullmatch(r'[A-Za-z]\.?', final_synonym):
+            continue
+        if re.fullmatch(r'[0-9]\.?', final_synonym):
+            continue
+
+        # some entries (e.g., plover) when creating compounds, use "p." as shorthands
+        final_synonym = final_synonym.replace(word_initial + ".", headword)
+        cleaned_syns.add(final_synonym)
+
+    return sorted(list(cleaned_syns))
+
+def create_entry_with_or_with_optional_synonyms(entry_word, final_definition, add_syns, glos):
+    """Helper function to handle synonym extraction and entry creation."""
+    source_words = list(entry_word) if isinstance(entry_word, list) else [entry_word]
+
+    # Only extract and add synonyms if the flag is set
+    synonyms_added = 0
+    if add_syns:
+        synonyms = extract_synonyms(entry_word, final_definition)
+        if synonyms:
+            source_words.extend(synonyms)
+            original_word_count = len(entry_word) if isinstance(entry_word, list) else 1
+            synonyms_added = len(source_words) - original_word_count
+
+    main_headword = source_words[0]
+    other_words = set(source_words[1:])
+    other_words.discard(main_headword)
+    all_words = [main_headword] + sorted(list(other_words))
+
+    entry = Entry(word=all_words, defi=final_definition, defiFormat='h')
+    glos.addEntry(entry)
+
+    return synonyms_added
+
+
+def run_processing(input_tsv: Path, output_ifo_name: str, add_syns: bool = False):
     """ Reads a TSV file, splits homographs, processes the HTML of each part,
     and writes a new Stardict dictionary, preserving all metadata."""
     if not input_tsv.is_file():
@@ -204,6 +275,7 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
 
     start_time = time.time()
     source_entry_count, split_entry_count, final_entry_count, malformed_lines, dotted_words, dot_corrected = 0, 0, 0, 0, 0, 0
+    synonyms_added_count = 0
     unique_headwords = set()
 
     homograph_pattern = re.compile(f'(?={CORE_HOMOGRAPH_PATTERN})')
@@ -280,24 +352,30 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
                                 # The headword is missing, so we prepend it.
                                 headword_b_tag = f' <span class="headword"><b>{word}</b></span>'
                                 final_definition = processed_part.replace('</b>', '</b>' + headword_b_tag, 1)
-                            entry = Entry(word=entry_word, defi=final_definition, defiFormat='h')
-                            glos.addEntry(entry)
+
+                            synonyms_added = create_entry_with_or_with_optional_synonyms(entry_word, final_definition, add_syns, glos)
+                            if add_syns:
+                                synonyms_added_count += synonyms_added
                             final_entry_count += 1
                 else: # If no splits, process the HTML of the whole definition
                     processed_definition = process_html(definition, word)
                     headword_div = f'<span class="headword"><b>{word}</b></span>'
                     final_definition = headword_div + processed_definition
-                    if re.search(r'<span class="headword"><b>(.*?)</b></span><b>(<span class="abbreviation">[‖¶†]</span>\s)?[a-zA-Z\u00C0-\u017F\u0180-\u024F\u02C8\'\d \-\.]', final_definition): # \u02C8 is ˈ
+
+                    if re.search(
+                        r'<span class="headword"><b>(.*?)</b></span>(<blockquote>)?<b>(<span class="abbreviation">[‖¶†]</span>\s)?[\w\u00C0-\u017F\u0180-\u024F\u02C8\' \-\.]',
+                        final_definition): # \u02C8 is ˈ
                         # If the headword was already present, we don't need to prepend it, so remove it.
                         # Seems backwards to do it this way but it is much safer.
                         final_definition = final_definition.replace(headword_div, '', 1)
                         # Finally, wrap the headword in a span tag, to match the expected format.
                         final_definition = re.sub(r'<b>(.*?)</b>', r'<span class="headword"><b>\1</b></span>', final_definition, count=1)
-                    elif re.search(r'<span class="headword"><b>[a-zA-Z\'\d \-\.]+</b></span>[\w]', final_definition):
+                    elif re.search(r'<span class="headword"><b>(.*?)</b></span>(<i>)?[\w]', final_definition):
                         # some entries (see "gen") need some space
                         final_definition = final_definition.replace(headword_div, headword_div + ' ', 1)
-                    entry = Entry(word=entry_word, defi=final_definition, defiFormat='h')
-                    glos.addEntry(entry)
+
+                    synonyms_added = create_entry_with_or_with_optional_synonyms(entry_word, final_definition, add_syns, glos)
+                    synonyms_added_count += synonyms_added
                     final_entry_count += 1
 
     except Exception as e:
@@ -331,6 +409,8 @@ def run_processing(input_tsv: Path, output_ifo_name: str):
     print(f"- Entries with homographs split:    {split_entry_count:,}")
     print(f"- Unique headwords processed:       {len(unique_headwords):,}")
     print(f"- Malformed lines skipped:          {malformed_lines:,}")
+    if add_syns:
+        print(f"- Synonyms added from b-tags:       {synonyms_added_count:,}")
     print(f"- Words ending in full stops found: {dotted_words:,}")
     print(f"- Full stops corrected:             {dot_corrected:,}")
     print(f"- Total final entries written:      {final_entry_count:,}")
@@ -345,5 +425,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("input_tsv", type=Path, help="Path to the source .tsv file.")
     parser.add_argument("output_ifo", type=str, help="Base name for the new output Stardict files (e.g., 'OED_2ed').")
+    parser.add_argument("--add-syns", action="store_true", help="Scan HTML for b-tags and add their cleaned content as synonyms for the entry.")
     args = parser.parse_args()
-    run_processing(args.input_tsv, args.output_ifo)
+    run_processing(args.input_tsv, args.output_ifo, args.add_syns)

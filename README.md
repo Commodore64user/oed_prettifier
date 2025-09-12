@@ -24,6 +24,7 @@ To run this script, you will need:
 
 * Python 3.9+
 * PyGlossary: A Python library for converting dictionary formats.
+* beautifulsoup4: A Python library for parsing for pulling data out of HTML and XML files.
 * dictzip: A command-line tool for compressing Stardict dictionary files. It is part of the `dictd` package on most Linux distributions.
 
 ## Installation (on macOS)
@@ -32,7 +33,7 @@ Clone or download the script.
 
 **Install PyGlossary:**
 ```bash
-python3 pip install pyglossary
+python3 pip install pyglossary beautifulsoup4
 ```
 
 * **On macOS (using Homebrew):**
@@ -48,18 +49,19 @@ First you will need to convert your existing copy of the OED to a `.tsv` file, y
 pyglossary ode_file_name.ifo ode_new_name.tsv
 ```
 
-The script is run from the command line and accepts two arguments: the path to the input TSV file and the base name for the output Stardict files.
+The script is run from the command line and accepts three arguments: the path to the input TSV file, the base name for the output Stardict files and an optional flag for adding synonyms.
 
 ### Syntax
 
 ```bash
-python oed_prettifier.py <input_tsv_path> <output_ifo_name>
+python oed_prettifier.py <input_tsv_path> <output_ifo_name> [--add-syns]
 ```
 
 ### Arguments
 
 * `input_tsv_path`: The full path to the source dictionary file in TSV format.
 * `output_ifo_name`: The desired base name for the output files. The script will generate files like `OED_2ed.ifo`, `OED_2ed.idx`, etc., from this name. You do not need to provide an extension, i.e., `.ifo`.
+* `--add-syns`: (optional) This flag will inspect each definition and add any bold tags it encounters as synonyms. Note: this will add roughly a million synonyms to the `.syn` file, so use at your own discretion.
 
 ### Example
 
@@ -81,6 +83,7 @@ The script's logic is divided into two main parts: the main processing loop (`ru
 * HTML Processing: Each split part (or the whole definition if no homographs are found) is passed to the `process_html` function for cleaning.
 * Headword Management: The script ensures that each final entry has a clearly defined headword.
 * Abbreviation Handling: For words ending in a full stop (e.g., "adj."), it cleans up duplicated definition text and creates a synonym entry without the full stop (e.g., "adj") to improve searchability.
+* Synonyms: If the user chooses to add them, the script will inspect each entry and add all forms and phrases (in bold tags) found within, note: this increases the running time significantly (3x).
 * Stardict Writing: After processing all lines, it uses `pyglossary` to write the final, cleaned entries to the Stardict files.
 * Decompression: It automatically decompresses the `.syn.dz` file to a plain `.syn` file for compatibility with KOReader.
 
