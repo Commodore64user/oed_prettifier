@@ -12,7 +12,7 @@ CORE_HOMOGRAPH_PATTERN = r'<b><span style="color:#8B008B">▪ <span>[IVXL]+\.</s
 
 SYNONYM_CLEANUP_MAP = {
     "†": "",   "*": "",   "ˈ": "",   "ˌ": "",   "(": "",   ")": "",   "[": "",   "]": "",   "‖": "",   "¶": "",   "?": "",   "!": "",
-    "–": "",
+    "–": "",   "—": "",   ";": "",   ":": "",
 }
 
 IGNORED_SYN_WORDS = {'to', 'or', 'and', 'a', 'an', 'the', 'after', 'before', 'in', 'on', 'at', 'for', 'with', 'by', 'of', 'from', 'Derivatives.',
@@ -158,18 +158,34 @@ def process_html(html: str, headword: str) -> str:
     def replace_acute(match):
         letter = match.group(1)
         accent_map = {
-            'a': '\u00e1',  # á
-            'e': '\u00e9',  # é
-            'i': '\u00ed',  # í
-            'o': '\u00f3',  # ó
-            'u': '\u00fa',  # ú
-            'y': '\u00fd'   # ý
+            'a': '\u00e1',  'A': '\u00c1', # á
+            'e': '\u00e9',  'E': '\u00c9', # é
+            'i': '\u00ed',  'I': '\u00cd', # í
+            'o': '\u00f3',  'O': '\u00d3', # ó
+            'u': '\u00fa',  'U': '\u00da', # ú
+            'y': '\u00fd',  'Y': '\u00dd', # ý
         }
         return accent_map.get(letter, match.group(0))
-    html = re.sub(r'\{([aeiouy])acu\}', replace_acute, html)
+    html = re.sub(r'\{([aeiouyAEIOUY])acu\}', replace_acute, html)
     html = html.replace('{ddd}', '...')
     html = html.replace('{oqq}', '\u201C')  # Left double quotation mark
     html = html.replace('{cqq}', '\u201D')  # Right double quotation mark
+    html = html.replace('{nfced}', '\u00B8') # cedilla [squiggly bit only, which technically is what a cedilla is ;)]
+    html = html.replace('{aacuced}', '\u00e1')
+    def replace_cedilla(match):
+        letter = match.group(1)
+        cedilla_map = {
+            'a': 'a\u0327', # a̧
+            'c': '\u00e7', # ç
+            'C': '\u00c7', # Ç
+            # 'i': 'i\u0327', # i̧
+            # 'u': 'u\u0327', # u̧
+            'd': 'd\u0327', # ḑ
+            't': '\u0163', # ţ
+            'z': 'z\u0327', # z̧
+        }
+        return cedilla_map.get(letter, match.group(0))
+    html = re.sub(r'\{([actdzC])ced\}', replace_cedilla, html)
     html = re.sub(r'⊇', 'e', html)
     # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
     html = re.sub(r'\u2013 ([,;\.])', f'– <b>{re.escape(headword)}</b>' + r'\1', html) # n-dash –
@@ -236,6 +252,9 @@ def extract_synonyms(headword: str, html: str) -> list[str]:
             continue
         if re.fullmatch(r'[0-9]\.?', final_synonym):
             continue
+        # Skip overly long multi-word synonyms (likely phrases rather than single synonyms)
+        if len(final_synonym.split()) > 3:
+            continue
 
         # some entries (e.g., plover) when creating compounds, use "p." as shorthands
         final_synonym = final_synonym.replace(word_initial + ".", headword)
@@ -250,7 +269,8 @@ def create_entry_with_or_with_optional_synonyms(entry_word, final_definition, ad
     # Only extract and add synonyms if the flag is set
     synonyms_added = 0
     if add_syns:
-        synonyms = extract_synonyms(entry_word, final_definition)
+        # Ensure we pass a string headword (not a list) to extract_synonyms to avoid .strip() on a list
+        synonyms = extract_synonyms(source_words[0], final_definition)
         if synonyms:
             source_words.extend(synonyms)
             original_word_count = len(entry_word) if isinstance(entry_word, list) else 1
@@ -275,7 +295,7 @@ def run_processing(input_tsv: Path, output_ifo_name: str, add_syns: bool = False
 
     start_time = time.time()
     source_entry_count, split_entry_count, final_entry_count, malformed_lines, dotted_words, dot_corrected = 0, 0, 0, 0, 0, 0
-    synonyms_added_count = 0
+    synonyms_added_count, total_entries = 0, 0
     unique_headwords = set()
 
     homograph_pattern = re.compile(f'(?={CORE_HOMOGRAPH_PATTERN})')
@@ -298,6 +318,11 @@ def run_processing(input_tsv: Path, output_ifo_name: str, add_syns: bool = False
                     if len(meta_parts) == 2:
                         key, value = meta_parts
                         key, value = key.strip(), value.strip()
+                        if key == 'wordcount':
+                            try:
+                                total_entries = int(value)
+                            except ValueError:
+                                pass # Ignore if wordcount isn't a valid number
                         print(f"    - Found metadata: '{key}' = '{value}'")
                         glos.setInfo(key, value)
                     continue # Move to the next line after processing metadata
@@ -308,6 +333,9 @@ def run_processing(input_tsv: Path, output_ifo_name: str, add_syns: bool = False
                     continue # Skip malformed lines
 
                 source_entry_count += 1
+                if total_entries > 0:
+                    percent = (source_entry_count / total_entries) * 100
+                    print(f"--> Processing: {source_entry_count}/{total_entries} ({percent:.1f}%)", end='\r')
                 word, definition = parts
                 unique_headwords.add(word)
 
@@ -363,14 +391,14 @@ def run_processing(input_tsv: Path, output_ifo_name: str, add_syns: bool = False
                     final_definition = headword_div + processed_definition
 
                     if re.search(
-                        r'<span class="headword"><b>(.*?)</b></span>(<blockquote>)?<b>(<span class="abbreviation">[‖¶†]</span>\s)?[\w\u00C0-\u017F\u0180-\u024F\u02C8\' \-\.]',
+                        r'<span class="headword"><b>(.*?)</b></span>(<blockquote>)?<b>(<span class="abbreviation">[‖¶†]</span>\s)?[\w\u00C0-\u017F\u0180-\u024F\u02C8\' &\-\.]',
                         final_definition): # \u02C8 is ˈ
                         # If the headword was already present, we don't need to prepend it, so remove it.
                         # Seems backwards to do it this way but it is much safer.
                         final_definition = final_definition.replace(headword_div, '', 1)
                         # Finally, wrap the headword in a span tag, to match the expected format.
                         final_definition = re.sub(r'<b>(.*?)</b>', r'<span class="headword"><b>\1</b></span>', final_definition, count=1)
-                    elif re.search(r'<span class="headword"><b>(.*?)</b></span>(<i>)?[\w]', final_definition):
+                    elif re.search(r'<span class="headword"><b>(.*?)</b></span>(<i>)?(<span class="abbreviation">\w|[\w])', final_definition):
                         # some entries (see "gen") need some space
                         final_definition = final_definition.replace(headword_div, headword_div + ' ', 1)
 
@@ -381,6 +409,7 @@ def run_processing(input_tsv: Path, output_ifo_name: str, add_syns: bool = False
     except Exception as e:
         sys.exit(f"Error processing TSV file: {e}")
 
+    print()
     print("--> Processing complete. Writing Stardict files...")
 
     # And back to Stradict we go!
