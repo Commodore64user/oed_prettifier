@@ -108,7 +108,7 @@ def process_html(html: str, headword: str) -> str:
     html = re.sub(r'<div class="etymology">(.*?)</div>', process_etymology, html, flags=re.S)
 
     # Heuristic approach to wrap in the forms section. note: there are multiple variations here so other forms sections found deep
-    # into an entry might not be captured. HELP WANTED @fixme.
+    # into an entry might not be captured. HELP WANTED #fixme.
     html = re.sub(r'<blockquote>(Forms:?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
     html = re.sub(r'<blockquote>(Also [0-9].*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
     html = re.sub(r'<blockquote>(<abr>Pa.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
@@ -135,6 +135,7 @@ def process_html(html: str, headword: str) -> str:
     html = re.sub(r'<span style="color:#4B0082">(\[?[a-z]\.\]?)</span>', r'<span class="subsenses">\1</span>', html)
     html = re.sub(r'<span style="color:#4B0082"><abr>(\[?[a-z]\.\]?)</abr></span>', r'<span class="subsenses">\1</span>', html)
     html = re.sub(r'<span style="color:#4B0082">(\[?[0-9]+\.\]?) (\[?[a-z]\.\]?)</span>', r'<span class="senses">\1</span> <span class="subsenses">\2</span>', html)
+    html = re.sub(r'<span style="color:#4B0082">(\[?[0-9]+\.\]?) <abr>(\[?[a-z]\.\]?)</abr></span>', r'<span class="senses">\1</span> <span class="subsenses">\2</span>', html)
     html = re.sub(r'<span style="color:#4B0082">(\[?[IVXL]+\.\]?) (\[?[0-9]+\.\]?)</span>', r'<span class="major-division">\1</span> <span class="senses">\2</span>', html)
     html = re.sub(r'<span style="color:#4B0082">(\[?[IVXL]+\.\]?)</span>', r'<span class="major-division">\1</span>', html)
     html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?)</span>', r'<span class="pos">\1</span>', html)
@@ -151,7 +152,7 @@ def process_html(html: str, headword: str) -> str:
     html = re.sub(r'(_____</blockquote>)<blockquote>', r'\1<blockquote class="addendum">', html)
     html = re.sub(r'<blockquote>\*', '<blockquote class="subheading">*', html)
     # This seems to be introducing some false positives, see entry "in", but overall it follows the OED pattern,
-    # so keeping it for now, however it might need to be revisited. @fixme.
+    # so keeping it for now, however it might need to be revisited. #fixme.
     html = html.replace('</blockquote><blockquote>', '</blockquote><blockquote class="usage-note">')
 
     # see "them"'s etymology.
@@ -171,24 +172,41 @@ def process_html(html: str, headword: str) -> str:
     html = html.replace('{oqq}', '\u201C')  # Left double quotation mark
     html = html.replace('{cqq}', '\u201D')  # Right double quotation mark
     html = html.replace('{nfced}', '\u00B8') # cedilla [squiggly bit only, which technically is what a cedilla is ;)]
-    html = html.replace('{aacuced}', '\u00e1')
+    html = html.replace('{aacuced}', '\u00e1') # needs more research see "id-al-adha"
     def replace_cedilla(match):
         letter = match.group(1)
         cedilla_map = {
             'a': 'a\u0327', # a̧
             'c': '\u00e7', # ç
             'C': '\u00c7', # Ç
-            # 'i': 'i\u0327', # i̧
-            # 'u': 'u\u0327', # u̧
+            'S': '\u015e',
+            # 'i': 'i\u0327', # see "Lamba"
             'd': 'd\u0327', # ḑ
             't': '\u0163', # ţ
             'z': 'z\u0327', # z̧
         }
         return cedilla_map.get(letter, match.group(0))
-    html = re.sub(r'\{([actdzC])ced\}', replace_cedilla, html)
+    html = re.sub(r'\{([actdzCS])ced\}', replace_cedilla, html)
     html = re.sub(r'⊇', 'e', html)
     # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
     html = re.sub(r'\u2013 ([,;\.])', f'– <b>{re.escape(headword)}</b>' + r'\1', html) # n-dash –
+    # def replace_breve(match):
+    #     letter = match.group(1)
+    #     breve_map = {
+    #         'c': 'c\u0306',   's': 's\u0306',  # s̆
+    #         'y': 'y\u0306',   'A': '\u0102',   # Ă
+    #         'z': 'z\u0306',   'G': '\u011e',   # Ğ
+    #         'r': 'r\u0306',   'S': 'S\u0306',  # S̆
+    #         'I': '\u012c',    'O': '\u014e',   # Ŏ
+    #         'j': 'j\u0306',   'n': 'n\u0306',  # n̆
+    #         'nf': '\u0306',   #'ae': 'FILLER_ae_breve',
+    #         # 'go': 'FILLER_go_breve',       'sq': 'FILLER_sq_breve',
+    #         # 'ymac': 'FILLER_ymac_breve',   'kmac': 'FILLER_kmac_breve',
+    #         # 'oemac': 'FILLER_oemac_breve', 'gamac': 'FILLER_gamac_breve',
+    #         # 'aemac': 'FILLER_aemac_breve', 'ohook': 'FILLER_ohook_breve',
+    #     }
+    #     return breve_map.get(letter, match.group(0))
+    # html = re.sub(r'\{([^}]+)breve\}', replace_breve, html)
 
     html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
     # Handle "Author abbreviation." pattern (like "Francis tr.")
@@ -232,10 +250,17 @@ def extract_synonyms(headword: str, html: str) -> list[str]:
     cleaned_syns = set()
     headword = clean_synonym(headword.strip())
     word_initial = headword[:1]
+    head_set = set(headword)
 
     # Find and remove all quotation divs from the parse tree.
     for div in soup.find_all('div', class_='quotations'):
         div.decompose()
+
+    # Also remove isolated roman-numeral markers like <b><sup>IV</sup></b>
+    for sup in soup.find_all('sup'):
+        parent = sup.parent
+        if parent and parent.name == 'b':
+            sup.decompose()
 
     for b_tag in soup.find_all('b'):
         final_synonym = clean_synonym(b_tag.get_text().strip())
@@ -253,11 +278,14 @@ def extract_synonyms(headword: str, html: str) -> list[str]:
         if re.fullmatch(r'[0-9]\.?', final_synonym):
             continue
         # Skip overly long multi-word synonyms (likely phrases rather than single synonyms)
-        if len(final_synonym.split()) > 3:
+        if len(final_synonym.split()) > 4:
             continue
-
         # some entries (e.g., plover) when creating compounds, use "p." as shorthands
         final_synonym = final_synonym.replace(word_initial + ".", headword)
+        # this should somewhat remove some of the noise generated by individual b-tags that should be in phrases
+        if len(headword) > 4 and set(final_synonym).isdisjoint(head_set): #fixme
+            continue
+
         cleaned_syns.add(final_synonym)
 
     return sorted(list(cleaned_syns))
@@ -292,6 +320,9 @@ def run_processing(input_tsv: Path, output_ifo_name: str, add_syns: bool = False
     and writes a new Stardict dictionary, preserving all metadata."""
     if not input_tsv.is_file():
         sys.exit(f"Error: Input TSV file not found at '{input_tsv}'")
+
+    output_dir = Path(output_ifo_name)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     start_time = time.time()
     source_entry_count, split_entry_count, final_entry_count, malformed_lines, dotted_words, dot_corrected = 0, 0, 0, 0, 0, 0
@@ -416,10 +447,27 @@ def run_processing(input_tsv: Path, output_ifo_name: str, add_syns: bool = False
     glos.setInfo("description", "This dictionary includes alternate search keys to make abbreviations searchable with and without their trailing full stops. " \
                 "This feature does not include grammatical inflections.")
     glos.setInfo("date", time.strftime("%Y-%m-%d"))
+    css_path = input_tsv.parent / 'style.css'
+    if css_path.is_file():
+        try:
+            # Open the CSS file in mode and read its content
+            with open(css_path, 'rb') as f_css:
+                css_content = f_css.read()
+
+                # Create a data entry for the stylesheet
+                css_entry = glos.newDataEntry(f"../{output_ifo_name}.css", css_content)
+                glos.addEntry(css_entry)
+                print(f"--> Attached stylesheet: '{css_path}'")
+
+        except Exception as e:
+            print(f"--> Warning: Could not read or add CSS file '{css_path}'. Error: {e}")
+    else:
+        print("--> No 'style.css' file found in the source directory. Skipping.")
     try:
-        glos.write(output_ifo_name, formatName="Stardict")
+        output_base_path = output_dir / Path(output_ifo_name).name
+        glos.write(str(output_base_path), formatName="Stardict")
         time.sleep(2)  # Ensure the file is written before proceeding
-        syn_dz_path = Path(output_ifo_name).with_suffix('.syn.dz')
+        syn_dz_path = output_base_path.with_suffix('.syn.dz')
         if syn_dz_path.is_file():
             print(f"--> Decompressing '{syn_dz_path}'...")
             subprocess.run(f"dictzip -d \"{syn_dz_path}\"", shell=True, check=True)

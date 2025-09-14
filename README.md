@@ -4,12 +4,12 @@ A Python script designed to process a TSV (Tab-Separated Values) export of the O
 
 ## Description
 
-The Oxford English Dictionary 2ed (originally published in 1989), which has been converted to Stardict, contains messy HTML with inline styles, inconsistent structures, and multiple homographs merged into a single entry. This script addresses these issues by:
+The Oxford English Dictionary 2ed (originally published in 1989), which has been converted to Stardict, contains messy HTML with inline styles, inconsistent structures, and multiple homographs merged into single entries. This script addresses these issues by:
 
 * **Splitting Homographs**: It correctly identifies and separates distinct homographs (words with the same spelling but different meanings and origins) into individual dictionary entries.
 * **Cleaning & Structuring HTML**: It uses a series of regular expressions to replace inline CSS styles with semantic class names, structure the entry content (e.g., etymology, forms, quotations), and clean up various formatting quirks.
 * **Handling Abbreviations**: It correctly processes entries that are abbreviations and creates alternative search keys (stardict synonyms) without the full stop for easier look-up in KOReader.
-* **Generating Stardict Files**: It uses the `pyglossary` library to write the processed data into a complete set of Stardict dictionary files (`.ifo`, `.dict.dz`, `.idx`, `.syn`).
+* **Generating Stardict Files**: It uses the `pyglossary` library to write the processed data into a complete set of Stardict dictionary files (`.ifo`, `.dict.dz`, `.idx`, `.syn`, `.css`).
 
 ## Editorial notes
 
@@ -29,7 +29,7 @@ To run this script, you will need:
 
 ## Installation (on macOS)
 
-Clone or download the script.
+Clone the repo or download the script and style files.
 
 **Install PyGlossary:**
 ```bash
@@ -69,7 +69,7 @@ python oed_prettifier.py <input_tsv_path> <output_ifo_name> [--add-syns]
 python3.13 oed_prettifier.py /dictionaries/OED_raw.tsv OED_2ed_prettified
 ```
 
-Once the conversion has finished, grab the `OED_2ed.css` file from this repo and rename it to the same name you gave your files (`OED_2ed_prettified` in the previous example). Now you should be ready to enjoy reading your brand new Stardict version of the OED.
+Place the `style.css` file in the same directory as the `.tsv` file. This ensures all the necessary files for your new Stardict version are generated correctly. If `style.css` is missing from the directory, the script will not create a `.css` file; in that case, rename the existing `style.css` to match your chosen filename (`OED_2ed_prettified` in the previous example). You’re now ready to enjoy your new Stardict version of the OED.
 
 ## How It Works
 
