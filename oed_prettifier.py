@@ -1,7 +1,9 @@
 import argparse
 import re
+import os
 import sys
 import time
+import shutil
 import subprocess
 from pathlib import Path
 from bs4 import BeautifulSoup
@@ -143,6 +145,7 @@ class DictionaryConverter:
         print("--> Processing complete. Writing Stardict files...")
         self._write_output()
         self._print_summary()
+        self._cleanup()
 
     def _process_entry_line(self, line: str):
         """Processes a single dictionary entry line."""
@@ -158,7 +161,10 @@ class DictionaryConverter:
         word, definition = parts
         self.unique_headwords.add(word)
 
-        entry_word, definition = self._handle_dotted_word_quirks(word, definition)
+        if word.endswith(('.', '‖', '¶', '†')):
+            entry_word, definition = self._handle_dotted_word_quirks(word, definition)
+        else:
+            entry_word = word
 
         # First, split the definition by the homograph pattern
         split_parts = self.homograph_pattern.split(definition)
@@ -184,31 +190,29 @@ class DictionaryConverter:
 
     def _handle_dotted_word_quirks(self, word: str, definition: str) -> tuple:
         """Handles special logic for words ending in full stops or symbols."""
-        entry_word = word
         # Some of these seem to be legitimate entries, whilst others seem to have been added by a previous "editor"
         # I'm choosing to preserve them but we need to handle some quirks.
-        if word.endswith(('.', '‖', '¶', '†')):
-            if word == "Prov.":
-                definition = "<br/>proverb, (in the Bible) Proverbs"
-            elif word == "Div.":
-                definition = "<br/>division, divinity"
-            # For some bizarre and unbeknown reason, these abbreviation entries have their definition duplicated
-            # so we will have to verify if it is the case (it is!) and clean it up. After that we will add a synonym
-            # entry for the headword without the leading full stop, so koreader can find it without editing.
-            test_definition = definition.replace('\\n', '')
-            def_len = len(test_definition)
+        if word == "Prov.":
+            definition = "<br/>proverb, (in the Bible) Proverbs"
+        elif word == "Div.":
+            definition = "<br/>division, divinity"
+        # For some bizarre and unbeknown reason, these abbreviation entries have their definition duplicated
+        # so we will have to verify if it is the case (it is!) and clean it up. After that we will add a synonym
+        # entry for the headword without the leading full stop, so koreader can find it without editing.
+        test_definition = definition.replace('\\n', '')
+        def_len = len(test_definition)
 
-            # sadly this method fails for some duplicated entries (about 7%, see "adj.") but it works for most of them
-            if def_len > 0 and def_len % 2 == 0:
-                midpoint = def_len // 2
-                if test_definition[:midpoint] == test_definition[midpoint:]:
-                    # If it's a duplicate, the correct definition is the part
-                    # before the original newline separator.
-                    definition = '<br/>' + definition.split('\\n')[0]
-                    self.metrics['dot_corrected'] += 1
-            alt_key = word.rstrip('.')
-            entry_word = [word, alt_key]
-            self.metrics['dotted_words'] += 1
+        # sadly this method fails for some duplicated entries (about 7%, see "adj.") but it works for most of them
+        if def_len > 0 and def_len % 2 == 0:
+            midpoint = def_len // 2
+            if test_definition[:midpoint] == test_definition[midpoint:]:
+                # If it's a duplicate, the correct definition is the part
+                # before the original newline separator.
+                definition = '<br/>' + definition.split('\\n')[0]
+                self.metrics['dot_corrected'] += 1
+        alt_key = word.rstrip('.')
+        entry_word = [word, alt_key]
+        self.metrics['dotted_words'] += 1
         return entry_word, definition
 
     def _process_homograph_entry(self, entry_word, word: str, split_parts: list):
@@ -286,6 +290,19 @@ class DictionaryConverter:
                 subprocess.run(f"dictzip -d \"{syn_dz_path}\"", shell=True, check=True)
         except Exception as e:
             sys.exit(f"An error occurred during the write process: {e}")
+
+    def _cleanup(self):
+        """Performs final cleanup of temporary files and directories."""
+        print("\nPerforming final cleanup...")
+        pycache_dir = "__pycache__"
+        if os.path.exists(pycache_dir) and os.path.isdir(pycache_dir):
+            try:
+                shutil.rmtree(pycache_dir)
+                print(f"Successfully removed {pycache_dir} directory.")
+            except OSError as e:
+                print(f"Error cleaning up {pycache_dir}: {e}")
+        else:
+            print("No __pycache__ directory found to clean.")
 
     def _print_summary(self):
         """Prints the final metrics and summary of the conversion process."""
