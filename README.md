@@ -73,30 +73,40 @@ Place the `style.css` file in the same directory as the `.tsv` file. This ensure
 
 ## How It Works
 
-The script's logic is divided into two main parts: the main processing loop (`run_processing`) and the HTML cleanup function (`process_html`).
+The script is built around an object-oriented design with three core components, each handling a distinct part of the conversion process.
 
-### `run_processing`
+---
+### `DictionaryConverter` (The Orchestrator ⚙️)
 
-* File Reading: Opens and reads the input TSV file line by line.
-* Entry Parsing: Each non-metadata line is split into a `word` and its `definition`.
-* Homograph Splitting: The core logic for separating entries. It uses a pattern to identify the start of a new homograph and split the definition content accordingly.
-* HTML Processing: Each split part (or the whole definition if no homographs are found) is passed to the `process_html` function for cleaning.
-* Headword Management: The script ensures that each final entry has a clearly defined headword.
-* Abbreviation Handling: For words ending in a full stop (e.g., "adj."), it cleans up duplicated definition text and creates a synonym entry without the full stop (e.g., "adj") to improve searchability.
-* Synonyms: If the user chooses to add them, the script will inspect each entry and add all forms and phrases (in bold tags) found within, note: this increases the running time significantly (3x).
-* Stardict Writing: After processing all lines, it uses `pyglossary` to write the final, cleaned entries to the Stardict files.
-* Decompression: It automatically decompresses the `.syn.dz` file to a plain `.syn` file for compatibility with KOReader.
+This is the main engine of the script. It manages the entire workflow from reading the input file to writing the final dictionary.
 
-### `process_html`
+* **File Handling**: It reads the source TSV file line by line and dispatches each line to the appropriate handler—either for metadata or for a dictionary entry.
+* **Entry Management**: It parses each entry, handles the quirks of abbreviations (like `adj.`), and determines if an entry contains multiple homographs.
+* **Delegation**: It delegates cleaning HTML or extracting synonyms. It creates an `EntryProcessor` instance for cleaning and calls the `SynonymExtractor` to find synonyms.
+* **Glossary Building**: It manages the `pyglossary` object, adding each processed entry. Finally, it writes the completed Stardict files and decompresses the `.syn.dz` file for KOReader compatibility.
 
-This function is a pipeline of regular expression substitutions that transform the raw HTML into a cleaner, more semantic format. Key transformations include:
+---
+### `EntryProcessor` (The HTML Cleaner 🧹)
 
-* Removing `<img>` tags and escaped newline/tab characters.
-* Wrapping phonetic transcriptions, quotations, and cross-references (`kref`) in spans with corresponding classes (`phonetic`, `quotations`, `kref`).
-* Identifying and wrapping distinct sections like **etymology**, **forms**, and **usage notes** in `<div>` tags with appropriate classes.
-* Replacing inline color styles for sense numbers (e.g., `[1.]`, `[a.]`, `[I.]`) with semantic classes like `.senses`, `.subsenses`, and `.major-division`.
-* Standardising the formatting of dates, authors, and titles within quotation blocks.
-* Cleaning up other miscellaneous formatting issues.
+This class is a dedicated worker responsible for all low-level HTML manipulation. It takes the raw, messy HTML of a single entry and transforms it into a clean(er), semantic structure.
+
+Its key operations are a pipeline of regular expression substitutions that:
+* Remove unwanted tags (like `<img>`) and formatting characters.
+* Wrap distinct sections like **etymology**, **forms**, and **usage notes** in `<div>` tags with appropriate classes.
+* Convert inline style attributes (e.g., `style="color:..."`) for sense numbers (`[1.]`, `[a.]`, etc.) into semantic CSS classes like `.senses` and `.subsenses`.
+* Identify and wrap phonetic transcriptions, quotations, and cross-references in `<span>` tags.
+* Standardise the format of dates, authors, and titles within quotations.
+
+---
+### `SynonymExtractor` (The Keyword Miner ⛏️)
+
+This is a specialised utility class for finding and cleaning potential synonyms, which are used as alternate search keys in the dictionary.
+
+* **Extraction**: It parses the cleaned HTML of an entry to find all text contained within bold (`<b>`) tags, which often represent alternate forms, compounds, or related phrases.
+* **Cleaning**: Each potential synonym is passed through a cleaning process to remove punctuation, symbols, and other noise.
+* **Filtering**: It filters out common English words (like 'and', 'the', 'of') and fragments to produce a useful list of keywords.
+
+**Note**: This is an optional step that significantly increases the script's running time (approximately 4x slower) due to the overhead of parsing every entry's HTML.
 
 
 ## Screnshots

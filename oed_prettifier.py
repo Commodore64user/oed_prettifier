@@ -7,492 +7,307 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from pyglossary.glossary_v2 import Glossary
 from pyglossary.entry import Entry
+from entry_processor import EntryProcessor
 
-CORE_HOMOGRAPH_PATTERN = r'<b><span style="color:#8B008B">▪ <span>[IVXL]+\.</span></span></b>'
+class SynonymExtractor:
+    """Handles extraction and cleaning of synonyms from entry HTML."""
+    SYNONYM_CLEANUP_MAP = {
+        "†": "",   "*": "",   "ˈ": "",   "ˌ": "",   "(": "",   ")": "",   "[": "",   "]": "",   "‖": "",   "¶": "",   "?": "",   "!": "",
+        "–": "",   "—": "",   ";": "",   ":": "",
+    }
 
-SYNONYM_CLEANUP_MAP = {
-    "†": "",   "*": "",   "ˈ": "",   "ˌ": "",   "(": "",   ")": "",   "[": "",   "]": "",   "‖": "",   "¶": "",   "?": "",   "!": "",
-    "–": "",   "—": "",   ";": "",   ":": "",
-}
+    IGNORED_SYN_WORDS = {'to', 'or', 'and', 'a', 'an', 'the', 'after', 'before', 'in', 'on', 'at', 'for', 'with', 'by', 'of', 'from', 'Derivatives.',
+                         'that', 'which', 'who', 'whom', 'whose', 'as', 'than', 'like', 'such', 'so', 'but', 'if', 'when', 'up', 'down', 'Compounds.'}
 
-IGNORED_SYN_WORDS = {'to', 'or', 'and', 'a', 'an', 'the', 'after', 'before', 'in', 'on', 'at', 'for', 'with', 'by', 'of', 'from', 'Derivatives.',
-                        'that', 'which', 'who', 'whom', 'whose', 'as', 'than', 'like', 'such', 'so', 'but', 'if', 'when', 'up', 'down', 'Compounds.'}
+    @staticmethod
+    def _clean_synonym(text: str) -> str:
+        """Removes unwanted characters from a potential synonym string."""
+        for char, replacement in SynonymExtractor.SYNONYM_CLEANUP_MAP.items():
+            text = text.replace(char, replacement)
+        return text.strip()
 
-def process_html(html: str, headword: str) -> str:
-    html = re.sub(r'<img[^>]+>', '', html)
-    html = re.sub(r'\\n', ' ', html)
-    html = re.sub(r'\\t', ' ', html)
-    if headword.endswith('.'):
-        html = html.replace('<abr>', '', 1)
-        html = html.replace('</abr>', '', 1)
+    @staticmethod
+    def extract(headword: str, html: str) -> list[str]:
+        """Extracts potential synonyms from <b> tags within the definition HTML."""
+        soup = BeautifulSoup(html, 'html.parser')
+        cleaned_syns = set()
+        headword = SynonymExtractor._clean_synonym(headword.strip())
+        word_initial = headword[:1]
+        head_set = set(headword)
 
-    html = re.sub(r'(<span>[IVXL]+\.</span></span></b>)\s*(<blockquote>)?(<b>.*?</b>)(</blockquote>)?', r'\1 <span class="headword">\3</span>', html, flags=re.DOTALL)
-    html = re.sub(r'<blockquote>\(<span style="color:#2F4F4F">(.*?)</span>\)</blockquote>', r' (<span class="phonetic">\1</span>)', html, flags=re.DOTALL)
+        # Find and remove all quotation divs from the parse tree.
+        for div in soup.find_all('div', class_='quotations'):
+            div.decompose()
 
-    html = html.replace('<blockquote><ex>', '<div class="quotations">')
-    html = html.replace('</ex></blockquote>', '</div>')
+        # Also remove isolated roman-numeral markers like <b><sup>IV</sup></b>
+        for sup in soup.find_all('sup'):
+            parent = sup.parent
+            if parent and parent.name == 'b':
+                sup.decompose()
 
-    html = re.sub(r'(<abr>†</abr>)\s', r'\1', html)
-    html = re.sub(r'(<abr>¶</abr>)\s', r'\1', html)
-    html = re.sub(r'<kref>(.*?)</kref>', r'<span class="kref">\1</span>', html)
-    html = html.replace('<abr>=</abr>', '<span class="same-as">=</span>')
-    # This is a liberty I've taken, which will capture some false positives (relative to the original OED text, see entry "them" section II. 4),
-    # but as it is a very common pattern, it will be useful to have it regardless.
-    html = re.sub(r'(<span class="same-as">=</span>)\s+([a-zA-Z]+)', r'\1 <span class="kref">\2</span>', html)
+        for b_tag in soup.find_all('b'):
+            final_synonym = SynonymExtractor._clean_synonym(b_tag.get_text().strip())
 
-    # This should separate quotations blocks in cases like "weak" where there are continuous quotations for different subsenses
-    # or cases like "which" sense 14, subsense a. where there are sub-subsenses (a) and (b).
-    # or when greek letters are involved, see "fantastic". Finally combine all other blocks into one.
-    html = re.sub(r'(</div>)(<div class="quotations">)(<b>[a-z]\.</b>)', r'\1 \2\3', html)
-    html = re.sub(r'(</div>)(<div class="quotations">)(<i>\([a-z]\)</i>)', r'\1 \2\3', html)
-    html = re.sub(r'(</div>)(<div class="quotations">)(<i><abr>[a-zA-Z]+\.</abr></i>)', r'\1 \2\3', html) # weak 2.a
-    html = re.sub(r'(</div>)(<div class="quotations">)(<i>[a-zA-Z]+\.?(?:[-\s][a-zA-Z]+\.)?</i>)', r'\1 \2\3', html) # weak 5.a
-    html = re.sub(r'(</div>)(<div class="quotations">)([\u03b1-\u03c9](?:<sup>[0-9]</sup>)? <b>)', r'\1 \2\3', html) # greek letters
-    html = re.sub(r'(</div>)(<div class="quotations">)(<b>)', r'\1\2 \3', html)
-    html = html.replace('</div><div class="quotations">', '')
+            if not final_synonym or final_synonym in SynonymExtractor.IGNORED_SYN_WORDS:
+                continue
+            if final_synonym.startswith('-') or final_synonym.endswith('-'):
+                continue
+            if re.search(r'\d{2,}', final_synonym):
+                continue
+            if re.fullmatch(r'[IVXL]+\.', final_synonym):
+                continue
+            if re.fullmatch(r'[A-Za-z]\.?', final_synonym):
+                continue
+            if re.fullmatch(r'[0-9]\.?', final_synonym):
+                continue
+            # Skip overly long multi-word synonyms (likely phrases rather than single synonyms)
+            if len(final_synonym.split()) > 4:
+                continue
+            # some entries (e.g., plover) when creating compounds, use "p." as shorthands
+            final_synonym = final_synonym.replace(word_initial + ".", headword)
+            # this should somewhat remove some of the noise generated by individual b-tags that should be in phrases
+            if len(headword) > 4 and set(final_synonym).isdisjoint(head_set): #fixme
+                continue
 
-    html = re.sub(r'(<b>)<span style="color:#8B008B">▪ <span>([IVXL]+)\.</span></span>(</b>)', r'\1<sup>\2</sup>\3', html)
-    # Fix dates, only match exactly 3 or 4 digit years. This should turn "c 1500" into "c1500" or "? a 1300" into "?a1300".
-    html = re.sub(r'<b>(\?)?\s?<i>([acp])</i> (\d{3,4})(\u2013\d{2})?</b>', r'<b>\1<i>\2</i>\3\4</b>', html)
-    html = re.sub(r'<b>(\?)?\s?(\d{3,4})(\u2013\d{2})?</b>', r'<b>\1\2\3</b>', html)
-    # Handle anonymous "in Source" patterns first, we add a placeholder which will be removed later.
-    html = re.sub(
-        r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+((?:in\s+[^<]*|―\s+)<i>.*?</i>)',
-        r'\1 <ANON_IN_SOURCE>\4</ANON_IN_SOURCE>',
-        html
-    )
-    html = re.sub(
-        r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+([^\s<]+(?:\s+[^\s<]+)*?)\s+(?=in\s+<i>|<i>|in|\(\w)',
-        r'\1 <span class="author">\4</span> ',
-        html
-    )
-    html = re.sub(
-        r'(<span class="author">[^<]*</span>)\s+((?:in\s+)?<i>[^<]*</i>)', r'\1 <span class="title">\2</span>', html)
-    html = re.sub( # Handle author + number reference pattern (like Ormin 9500)
-        r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>)\s+([^\s<]+(?:\s+[^\s<]+)*)\s+(\d+)\s+<span style="color:#8B008B">',
-        r'\1 <span class="author">\3</span> <span class="reference">\4</span> <span style="color:#8B008B">',
-        html
-    )
-    html = re.sub( # Handle author + number line-number pattern (like Lay. 3014)
-        r'(<b>(?:\?)?(?:<i>[acp]</i>\s?)?(\d{3,4})</b>)\s+((?:[A-Z]+\.)?\s?<abr>[^<]+</abr>)\s+(\d+)\s+<span style="color:#8B008B">',
-        r'\1 <span class="author">\3</span> <span class="line-number">\4</span> <span style="color:#8B008B">',
-        html
-    )
+            cleaned_syns.add(final_synonym)
 
-    # html = re.sub(
-    #     r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+([^\s<,]+(?:\s+[^\s<,]+)*),\s+<span class="quotes">',
-    #     r'\1 <span class="author">\4</span>, <span class="quotes">',
-    #     html
-    # )
+        return sorted(list(cleaned_syns))
 
-    # Replace the start of the etymology block, but only the first occurrence, just in case.
-    html = re.sub(
-        r'<blockquote><span style="color:#808080">\[',
-        '<div class="etymology"><blockquote><span class="etymology-main">[',
-        html,
-        count=1
-    )
-    # Then let's try finding the correct closing tag for the etymology block. stop_pos is a point at which it will for sure have closed.
-    stop_pos = html.find('<b><span style="color:#4B0082">')
-    search_text = html[:stop_pos] if stop_pos != -1 else html
-    result, count = re.subn(r'\](</span>)</blockquote>', ']</span></div>', search_text, count=1)
-    if count == 0:
-        result = re.sub(r'\]</blockquote>', ']</div>', result, count=1)
-    html = result + (html[stop_pos:] if stop_pos != -1 else '')
-    # Not quite done yet, now add class to all other blockquotes inside the etymology block.
-    def process_etymology(match):
-        block = match.group(1)
-        # Add indent class to all blockquotes
-        block = re.sub(r'(</blockquote>)<blockquote>', r'\1<blockquote class="etymology-notes">', block)
-        return f'<div class="etymology">{block}</div>'
-    html = re.sub(r'<div class="etymology">(.*?)</div>', process_etymology, html, flags=re.S)
+class DictionaryConverter:
+    """Orchestrates the conversion from a TSV file to a Stardict dictionary."""
+    CORE_HOMOGRAPH_PATTERN = r'<b><span style="color:#8B008B">▪ <span>[IVXL]+\.</span></span></b>'
 
-    # Heuristic approach to wrap in the forms section. note: there are multiple variations here so other forms sections found deep
-    # into an entry might not be captured. HELP WANTED #fixme.
-    html = re.sub(r'<blockquote>(Forms:?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-    html = re.sub(r'<blockquote>(Also [0-9].*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-    html = re.sub(r'<blockquote>(<abr>Pa.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-    html = re.sub(r'<blockquote>(Past and <abr>pple.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-    html = re.sub(r'<blockquote>(Pl. <b>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-    html = re.sub(r'<blockquote>(Usually in <abr>pl.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-    html = re.sub(r'<blockquote>(commonly in (?:<i>)?<abr>pl.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-    # sometimes the 'forms' section is placed below its normal location and is preceded by a greek letter, e.g., "α", so we need to capture that too.
-    html = re.sub(r'<blockquote>(\(<i>[\u03b1-\u03c9]</i>\).*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-    html = re.sub(r'<blockquote>([\u03b1-\u03c9]<sup>[0-9]</sup>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL) # greek letters
-
-    # These are mini etymologies found for specific senses (i.e., not the main at the top of the entry).
-    html = html.replace('<blockquote>[', '<div class="etymology">[')
-    html = html.replace(']</blockquote>', ']</div>')
-
-    html = html.replace('<span style="color:#8B008B">', '<span class="quotes">')
-    html = re.sub(r'</span><b>(\??(<i>)?[acp0-9])', r'</span> <b>\1', html)
-    html = re.sub(r'(<span class="quotes">.*?</span>)(<[^>]+>)', r'\1 \2', html)
-
-    html = re.sub(r'\{sup([a-z])\}', r'<span class="small-cap-letter">\1</span>', html)
-    html = re.sub(r'(</blockquote>)(<blockquote><abr>†</abr>\s*<b><span style="color:#4B0082">)', r'\1 \2', html)
-    # Remove embedded styles and add classes to the spans
-    html = re.sub(r'<span style="color:#4B0082">(\[?[0-9]+\.\]?)</span>', r'<span class="senses">\1</span>', html)
-    html = re.sub(r'<span style="color:#4B0082">(\[?[a-z]\.\]?)</span>', r'<span class="subsenses">\1</span>', html)
-    html = re.sub(r'<span style="color:#4B0082"><abr>(\[?[a-z]\.\]?)</abr></span>', r'<span class="subsenses">\1</span>', html)
-    html = re.sub(r'<span style="color:#4B0082">(\[?[0-9]+\.\]?) (\[?[a-z]\.\]?)</span>', r'<span class="senses">\1</span> <span class="subsenses">\2</span>', html)
-    html = re.sub(r'<span style="color:#4B0082">(\[?[0-9]+\.\]?) <abr>(\[?[a-z]\.\]?)</abr></span>', r'<span class="senses">\1</span> <span class="subsenses">\2</span>', html)
-    html = re.sub(r'<span style="color:#4B0082">(\[?[IVXL]+\.\]?) (\[?[0-9]+\.\]?)</span>', r'<span class="major-division">\1</span> <span class="senses">\2</span>', html)
-    html = re.sub(r'<span style="color:#4B0082">(\[?[IVXL]+\.\]?)</span>', r'<span class="major-division">\1</span>', html)
-    html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?)</span>', r'<span class="pos">\1</span>', html)
-    html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[IVXL]+\.\]?)</span>', r'<span class="pos">\1</span> <span class="major-division">\2</span>', html)
-
-    html = re.sub(
-        r'(<blockquote><b><span class="(?:senses|subsenses)">[a-z0-9]+\.</span></b>) (.*?\(<i>[\u03b1-\u03c9]</i>\).*?)</blockquote>',
-        r'\1 <span class="forms">\2</span></blockquote>',
-        html,
-        flags=re.DOTALL
-    )
-
-    html = re.sub(r'</blockquote><blockquote>(\s*)(<b>)?<span class=', r'</blockquote><blockquote class="definition-partial">\1\2<span class=', html)
-    html = re.sub(r'(_____</blockquote>)<blockquote>', r'\1<blockquote class="addendum">', html)
-    html = re.sub(r'<blockquote>\*', '<blockquote class="subheading">*', html)
-    # This seems to be introducing some false positives, see entry "in", but overall it follows the OED pattern,
-    # so keeping it for now, however it might need to be revisited. #fixme.
-    html = html.replace('</blockquote><blockquote>', '</blockquote><blockquote class="usage-note">')
-
-    # see "them"'s etymology.
-    def replace_acute(match):
-        letter = match.group(1)
-        accent_map = {
-            'a': '\u00e1',  'A': '\u00c1', # á
-            'e': '\u00e9',  'E': '\u00c9', # é
-            'i': '\u00ed',  'I': '\u00cd', # í
-            'o': '\u00f3',  'O': '\u00d3', # ó
-            'u': '\u00fa',  'U': '\u00da', # ú
-            'y': '\u00fd',  'Y': '\u00dd', # ý
+    def __init__(self, input_tsv: Path, output_ifo: str, add_syns: bool):
+        if not input_tsv.is_file():
+            sys.exit(f"Error: Input TSV file not found at '{input_tsv}'")
+        self.input_tsv = input_tsv
+        self.output_ifo_name = output_ifo
+        self.add_syns = add_syns
+        self.start_time = time.time()
+        self.metrics = {
+            'source_entry_count': 0, 'split_entry_count': 0, 'final_entry_count': 0,
+            'malformed_lines': 0, 'dotted_words': 0, 'dot_corrected': 0,
+            'synonyms_added_count': 0, 'total_entries': 0
         }
-        return accent_map.get(letter, match.group(0))
-    html = re.sub(r'\{([aeiouyAEIOUY])acu\}', replace_acute, html)
-    html = html.replace('{ddd}', '...')
-    html = html.replace('{oqq}', '\u201C')  # Left double quotation mark
-    html = html.replace('{cqq}', '\u201D')  # Right double quotation mark
-    html = html.replace('{nfced}', '\u00B8') # cedilla [squiggly bit only, which technically is what a cedilla is ;)]
-    html = html.replace('{aacuced}', '\u00e1') # needs more research see "id-al-adha"
-    def replace_cedilla(match):
-        letter = match.group(1)
-        cedilla_map = {
-            'a': 'a\u0327', # a̧
-            'c': '\u00e7', # ç
-            'C': '\u00c7', # Ç
-            'S': '\u015e',
-            # 'i': 'i\u0327', # see "Lamba"
-            'd': 'd\u0327', # ḑ
-            't': '\u0163', # ţ
-            'z': 'z\u0327', # z̧
-        }
-        return cedilla_map.get(letter, match.group(0))
-    html = re.sub(r'\{([actdzCS])ced\}', replace_cedilla, html)
-    html = re.sub(r'⊇', 'e', html)
-    # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
-    html = re.sub(r'\u2013 ([,;\.])', f'– <b>{re.escape(headword)}</b>' + r'\1', html) # n-dash –
-    # def replace_breve(match):
-    #     letter = match.group(1)
-    #     breve_map = {
-    #         'c': 'c\u0306',   's': 's\u0306',  # s̆
-    #         'y': 'y\u0306',   'A': '\u0102',   # Ă
-    #         'z': 'z\u0306',   'G': '\u011e',   # Ğ
-    #         'r': 'r\u0306',   'S': 'S\u0306',  # S̆
-    #         'I': '\u012c',    'O': '\u014e',   # Ŏ
-    #         'j': 'j\u0306',   'n': 'n\u0306',  # n̆
-    #         'nf': '\u0306',   #'ae': 'FILLER_ae_breve',
-    #         # 'go': 'FILLER_go_breve',       'sq': 'FILLER_sq_breve',
-    #         # 'ymac': 'FILLER_ymac_breve',   'kmac': 'FILLER_kmac_breve',
-    #         # 'oemac': 'FILLER_oemac_breve', 'gamac': 'FILLER_gamac_breve',
-    #         # 'aemac': 'FILLER_aemac_breve', 'ohook': 'FILLER_ohook_breve',
-    #     }
-    #     return breve_map.get(letter, match.group(0))
-    # html = re.sub(r'\{([^}]+)breve\}', replace_breve, html)
+        self.unique_headwords = set()
+        Glossary.init()
+        self.glos = Glossary()
+        self.homograph_pattern = re.compile(f'(?={self.CORE_HOMOGRAPH_PATTERN})')
 
-    html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
-    # Handle "Author abbreviation." pattern (like "Francis tr.")
-    html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) ((?:[\w]\.)?\s?[\w]+)\s(<abr>[\w]+\.</abr>)(\s<i>)', r'\1 <span class="author">\3</span> \4\5', html)
-    # Handle specific "Initial Author (Source) Number" pattern
-    html = re.sub(
-        r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) ([A-Z]\.)\s<abr>([\w]+\.)</abr>\s(\([^)]+\))\s([0-9]+)',
-        r'\1 <span class="author">\2 \3</span> \4 \5',
-        html
-    )
-    # This grew out of control, but is seems to be held together by fairy dust, it works although this should have been done in a more structured way.
-    html = re.sub(
-        r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) ([^<]*)?<abr>([\w]+\.)</abr>\s([\w]+)?\s?((<i>)?[0-9]?\s?)(<i>|<abr>)',
-        r'\1 <span class="author">\2\3 \4</span> \5\7',
-        html
-    )
-    # Finally, convert the placeholder back
-    html = re.sub(r'<ANON_IN_SOURCE>', '', html)
-    html = re.sub(r'</ANON_IN_SOURCE>', '', html)
-    def fix_author_tr(match):
-        content = match.group(0)
-        if ' tr.' in content:
-            return re.sub(r'<span class="author">(.*?) (tr\.(?:\s)*)</span>', r'<span class="author">\1</span> \2', content)
-        return content
-    html = re.sub(r'<span class="author">.*?</span>', fix_author_tr, html)
+    def _create_entry(self, entry_word, final_definition):
+        """Helper function to handle synonym extraction and entry creation."""
+        source_words = list(entry_word) if isinstance(entry_word, list) else [entry_word]
 
-    html = re.sub(r'<span class="translator">tr.</span>', '<abr>tr.</abr>', html)
-    html = html.replace('<abr>', '<span class="abbreviation">')
-    html = html.replace('</abr>', '</span>')
+        # Only extract and add synonyms if the flag is set
+        synonyms_added = 0
+        if self.add_syns:
+            # Ensure we pass a string headword (not a list) to extract_synonyms to avoid .strip() on a list
+            synonyms = SynonymExtractor.extract(source_words[0], final_definition)
+            if synonyms:
+                source_words.extend(synonyms)
+                original_word_count = len(entry_word) if isinstance(entry_word, list) else 1
+                synonyms_added = len(source_words) - original_word_count
 
-    return html
+        main_headword = source_words[0]
+        other_words = set(source_words[1:])
+        other_words.discard(main_headword)
+        all_words = [main_headword] + sorted(list(other_words))
 
-def clean_synonym(text: str) -> str:
-    """Removes unwanted characters from a potential synonym string."""
-    for char, replacement in SYNONYM_CLEANUP_MAP.items():
-        text = text.replace(char, replacement)
-    return text.strip()
+        entry = Entry(word=all_words, defi=final_definition, defiFormat='h')
+        self.glos.addEntry(entry)
 
-def extract_synonyms(headword: str, html: str) -> list[str]:
-    soup = BeautifulSoup(html, 'html.parser')
-    cleaned_syns = set()
-    headword = clean_synonym(headword.strip())
-    word_initial = headword[:1]
-    head_set = set(headword)
-
-    # Find and remove all quotation divs from the parse tree.
-    for div in soup.find_all('div', class_='quotations'):
-        div.decompose()
-
-    # Also remove isolated roman-numeral markers like <b><sup>IV</sup></b>
-    for sup in soup.find_all('sup'):
-        parent = sup.parent
-        if parent and parent.name == 'b':
-            sup.decompose()
-
-    for b_tag in soup.find_all('b'):
-        final_synonym = clean_synonym(b_tag.get_text().strip())
-
-        if not final_synonym or final_synonym in IGNORED_SYN_WORDS:
-            continue
-        if final_synonym.startswith('-') or final_synonym.endswith('-'):
-            continue
-        if re.search(r'\d{2,}', final_synonym):
-            continue
-        if re.fullmatch(r'[IVXL]+\.', final_synonym):
-            continue
-        if re.fullmatch(r'[A-Za-z]\.?', final_synonym):
-            continue
-        if re.fullmatch(r'[0-9]\.?', final_synonym):
-            continue
-        # Skip overly long multi-word synonyms (likely phrases rather than single synonyms)
-        if len(final_synonym.split()) > 4:
-            continue
-        # some entries (e.g., plover) when creating compounds, use "p." as shorthands
-        final_synonym = final_synonym.replace(word_initial + ".", headword)
-        # this should somewhat remove some of the noise generated by individual b-tags that should be in phrases
-        if len(headword) > 4 and set(final_synonym).isdisjoint(head_set): #fixme
-            continue
-
-        cleaned_syns.add(final_synonym)
-
-    return sorted(list(cleaned_syns))
-
-def create_entry_with_or_with_optional_synonyms(entry_word, final_definition, add_syns, glos):
-    """Helper function to handle synonym extraction and entry creation."""
-    source_words = list(entry_word) if isinstance(entry_word, list) else [entry_word]
-
-    # Only extract and add synonyms if the flag is set
-    synonyms_added = 0
-    if add_syns:
-        # Ensure we pass a string headword (not a list) to extract_synonyms to avoid .strip() on a list
-        synonyms = extract_synonyms(source_words[0], final_definition)
-        if synonyms:
-            source_words.extend(synonyms)
-            original_word_count = len(entry_word) if isinstance(entry_word, list) else 1
-            synonyms_added = len(source_words) - original_word_count
-
-    main_headword = source_words[0]
-    other_words = set(source_words[1:])
-    other_words.discard(main_headword)
-    all_words = [main_headword] + sorted(list(other_words))
-
-    entry = Entry(word=all_words, defi=final_definition, defiFormat='h')
-    glos.addEntry(entry)
-
-    return synonyms_added
+        self.metrics['synonyms_added_count'] += synonyms_added
+        self.metrics['final_entry_count'] += 1
 
 
-def run_processing(input_tsv: Path, output_ifo_name: str, add_syns: bool = False):
-    """ Reads a TSV file, splits homographs, processes the HTML of each part,
-    and writes a new Stardict dictionary, preserving all metadata."""
-    if not input_tsv.is_file():
-        sys.exit(f"Error: Input TSV file not found at '{input_tsv}'")
-
-    output_dir = Path(output_ifo_name)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    start_time = time.time()
-    source_entry_count, split_entry_count, final_entry_count, malformed_lines, dotted_words, dot_corrected = 0, 0, 0, 0, 0, 0
-    synonyms_added_count, total_entries = 0, 0
-    unique_headwords = set()
-
-    homograph_pattern = re.compile(f'(?={CORE_HOMOGRAPH_PATTERN})')
-
-    print(f"--> Reading and processing '{input_tsv}'...")
-
-    Glossary.init()
-    glos = Glossary()
-
-    try:
-        with open(input_tsv, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-
-                # --- Process metadata lines for the .ifo file ---
-                if line.startswith('##'):
-                    meta_parts = line.lstrip('#').strip().split('\t', 1)
-                    if len(meta_parts) == 2:
-                        key, value = meta_parts
-                        key, value = key.strip(), value.strip()
-                        if key == 'wordcount':
-                            try:
-                                total_entries = int(value)
-                            except ValueError:
-                                pass # Ignore if wordcount isn't a valid number
-                        print(f"    - Found metadata: '{key}' = '{value}'")
-                        glos.setInfo(key, value)
-                    continue # Move to the next line after processing metadata
-
-                parts = line.split('\t', 1)
-                if len(parts) != 2:
-                    malformed_lines += 1
-                    continue # Skip malformed lines
-
-                source_entry_count += 1
-                if total_entries > 0:
-                    percent = (source_entry_count / total_entries) * 100
-                    print(f"--> Processing: {source_entry_count}/{total_entries} ({percent:.1f}%)", end='\r')
-                word, definition = parts
-                unique_headwords.add(word)
-
-                entry_word = word
-                # Some of these seem to be legitimate entries, whilst others seem to have been added by a previous "editor"
-                # I'm choosing to preserve them but we need to handle some quirks.
-                if word.endswith(('.', '‖', '¶', '†')):
-                    if word == "Prov.":
-                        definition = "<br/>proverb, (in the Bible) Proverbs"
-                    elif word == "Div.":
-                        definition = "<br/>division, divinity"
-                    # For some bizarre and unbeknown reason, these abbreviation entries have their definition duplicated
-                    # so we will have to verify if it is the case (it is!) and clean it up. After that we will add a synonym
-                    # entry for the headword without the leading full stop, so koreader can find it without editing.
-                    test_definition = definition.replace('\\n', '')
-                    def_len = len(test_definition)
-
-                    # sadly this method fails for some duplicated entries (about 7%, see "adj.") but it works for most of them
-                    if def_len > 0 and def_len % 2 == 0:
-                        midpoint = def_len // 2
-                        if test_definition[:midpoint] == test_definition[midpoint:]:
-                            # If it's a duplicate, the correct definition is the part
-                            # before the original newline separator.
-                            definition = '<br/>' + definition.split('\\n')[0]
-                            dot_corrected += 1
-                    alt_key = word.rstrip('.')
-                    entry_word = [word, alt_key]
-                    dotted_words += 1
-
-                # First, split the definition by the homograph pattern
-                split_parts = homograph_pattern.split(definition)
-
-                if len(split_parts) > 1:
-                    split_entry_count += 1
-                    for part in split_parts:
-                        if part.strip():
-                            processed_part = process_html(part, word)
-                            if re.search(r'<b><sup>[IVXL]+</sup></b>\s*<span class="headword">', processed_part):
-                                # A headword is already present, so use the part as-is.
-                                final_definition = processed_part
-                            else:
-                                # The headword is missing, so we prepend it.
-                                headword_b_tag = f' <span class="headword"><b>{word}</b></span>'
-                                final_definition = processed_part.replace('</b>', '</b>' + headword_b_tag, 1)
-
-                            synonyms_added = create_entry_with_or_with_optional_synonyms(entry_word, final_definition, add_syns, glos)
-                            if add_syns:
-                                synonyms_added_count += synonyms_added
-                            final_entry_count += 1
-                else: # If no splits, process the HTML of the whole definition
-                    processed_definition = process_html(definition, word)
-                    headword_div = f'<span class="headword"><b>{word}</b></span>'
-                    final_definition = headword_div + processed_definition
-
-                    if re.search(
-                        r'<span class="headword"><b>(.*?)</b></span>(<blockquote>)?<b>(<span class="abbreviation">[‖¶†]</span>\s)?[\w\u00C0-\u017F\u0180-\u024F\u02C8\' &\-\.]',
-                        final_definition): # \u02C8 is ˈ
-                        # If the headword was already present, we don't need to prepend it, so remove it.
-                        # Seems backwards to do it this way but it is much safer.
-                        final_definition = final_definition.replace(headword_div, '', 1)
-                        # Finally, wrap the headword in a span tag, to match the expected format.
-                        final_definition = re.sub(r'<b>(.*?)</b>', r'<span class="headword"><b>\1</b></span>', final_definition, count=1)
-                    elif re.search(r'<span class="headword"><b>(.*?)</b></span>(<i>)?(<span class="abbreviation">\w|[\w])', final_definition):
-                        # some entries (see "gen") need some space
-                        final_definition = final_definition.replace(headword_div, headword_div + ' ', 1)
-
-                    synonyms_added = create_entry_with_or_with_optional_synonyms(entry_word, final_definition, add_syns, glos)
-                    synonyms_added_count += synonyms_added
-                    final_entry_count += 1
-
-    except Exception as e:
-        sys.exit(f"Error processing TSV file: {e}")
-
-    print()
-    print("--> Processing complete. Writing Stardict files...")
-
-    # And back to Stradict we go!
-    glos.setInfo("description", "This dictionary includes alternate search keys to make abbreviations searchable with and without their trailing full stops. " \
-                "This feature does not include grammatical inflections.")
-    glos.setInfo("date", time.strftime("%Y-%m-%d"))
-    css_path = input_tsv.parent / 'style.css'
-    if css_path.is_file():
+    def run(self):
+        """Reads a TSV file, splits homographs, processes the HTML of each part,
+        and prepares the glossary for writing."""
+        print(f"--> Reading and processing '{self.input_tsv}'...")
         try:
-            # Open the CSS file in mode and read its content
-            with open(css_path, 'rb') as f_css:
-                css_content = f_css.read()
+            with open(self.input_tsv, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
 
-                # Create a data entry for the stylesheet
-                css_entry = glos.newDataEntry(f"../{output_ifo_name}.css", css_content)
-                glos.addEntry(css_entry)
-                print(f"--> Attached stylesheet: '{css_path}'")
-
+                    # Process metadata lines for the .ifo file
+                    if line.startswith('##'):
+                        self._process_metadata_line(line)
+                    else:
+                        self._process_entry_line(line)
         except Exception as e:
-            print(f"--> Warning: Could not read or add CSS file '{css_path}'. Error: {e}")
-    else:
-        print("--> No 'style.css' file found in the source directory. Skipping.")
-    try:
-        output_base_path = output_dir / Path(output_ifo_name).name
-        glos.write(str(output_base_path), formatName="Stardict")
-        time.sleep(2)  # Ensure the file is written before proceeding
-        syn_dz_path = output_base_path.with_suffix('.syn.dz')
-        if syn_dz_path.is_file():
-            print(f"--> Decompressing '{syn_dz_path}'...")
-            subprocess.run(f"dictzip -d \"{syn_dz_path}\"", shell=True, check=True)
-    except Exception as e:
-        sys.exit(f"An error occurred during the write process: {e}")
+            sys.exit(f"Error processing TSV file: {e}")
 
-    end_time = time.time()
-    duration = end_time - start_time
-    minutes, seconds = divmod(duration, 60)
+        print()
+        print("--> Processing complete. Writing Stardict files...")
+        self._write_output()
+        self._print_summary()
 
-    print("\n----------------------------------------------------")
-    print(f"Process complete. New dictionary '{output_ifo_name}.ifo' created.")
-    print("----------------------------------------------------")
-    print("Metrics:")
-    print(f"- Entries read from source TSV:     {source_entry_count:,}")
-    print(f"- Entries with homographs split:    {split_entry_count:,}")
-    print(f"- Unique headwords processed:       {len(unique_headwords):,}")
-    print(f"- Malformed lines skipped:          {malformed_lines:,}")
-    if add_syns:
-        print(f"- Synonyms added from b-tags:       {synonyms_added_count:,}")
-    print(f"- Words ending in full stops found: {dotted_words:,}")
-    print(f"- Full stops corrected:             {dot_corrected:,}")
-    print(f"- Total final entries written:      {final_entry_count:,}")
-    print(f"- Total execution time:             {int(minutes):02d}:{int(seconds):02d}")
-    print("----------------------------------------------------\n")
+    def _process_entry_line(self, line: str):
+        """Processes a single dictionary entry line."""
+        parts = line.split('\t', 1)
+        if len(parts) != 2:
+            self.metrics['malformed_lines'] += 1
+            return # Skip malformed lines
+
+        self.metrics['source_entry_count'] += 1
+        if self.metrics['total_entries'] > 0:
+            percent = (self.metrics['source_entry_count'] / self.metrics['total_entries']) * 100
+            print(f"--> Processing: {self.metrics['source_entry_count']}/{self.metrics['total_entries']} ({percent:.1f}%)", end='\r')
+        word, definition = parts
+        self.unique_headwords.add(word)
+
+        entry_word, definition = self._handle_dotted_word_quirks(word, definition)
+
+        # First, split the definition by the homograph pattern
+        split_parts = self.homograph_pattern.split(definition)
+
+        if len(split_parts) > 1:
+            self._process_homograph_entry(entry_word, word, split_parts)
+        else: # If no splits, process the HTML of the whole definition
+            self._process_single_entry(entry_word, word, definition)
+
+    def _process_metadata_line(self, line: str):
+        """Parses a metadata line and updates the glossary info."""
+        meta_parts = line.lstrip('#').strip().split('\t', 1)
+        if len(meta_parts) == 2:
+            key, value = meta_parts
+            key, value = key.strip(), value.strip()
+            if key == 'wordcount':
+                try:
+                    self.metrics['total_entries'] = int(value)
+                except ValueError:
+                    pass # Ignore if wordcount isn't a valid number
+            print(f"    - Found metadata: '{key}' = '{value}'")
+            self.glos.setInfo(key, value)
+
+    def _handle_dotted_word_quirks(self, word: str, definition: str) -> tuple:
+        """Handles special logic for words ending in full stops or symbols."""
+        entry_word = word
+        # Some of these seem to be legitimate entries, whilst others seem to have been added by a previous "editor"
+        # I'm choosing to preserve them but we need to handle some quirks.
+        if word.endswith(('.', '‖', '¶', '†')):
+            if word == "Prov.":
+                definition = "<br/>proverb, (in the Bible) Proverbs"
+            elif word == "Div.":
+                definition = "<br/>division, divinity"
+            # For some bizarre and unbeknown reason, these abbreviation entries have their definition duplicated
+            # so we will have to verify if it is the case (it is!) and clean it up. After that we will add a synonym
+            # entry for the headword without the leading full stop, so koreader can find it without editing.
+            test_definition = definition.replace('\\n', '')
+            def_len = len(test_definition)
+
+            # sadly this method fails for some duplicated entries (about 7%, see "adj.") but it works for most of them
+            if def_len > 0 and def_len % 2 == 0:
+                midpoint = def_len // 2
+                if test_definition[:midpoint] == test_definition[midpoint:]:
+                    # If it's a duplicate, the correct definition is the part
+                    # before the original newline separator.
+                    definition = '<br/>' + definition.split('\\n')[0]
+                    self.metrics['dot_corrected'] += 1
+            alt_key = word.rstrip('.')
+            entry_word = [word, alt_key]
+            self.metrics['dotted_words'] += 1
+        return entry_word, definition
+
+    def _process_homograph_entry(self, entry_word, word: str, split_parts: list):
+        """Processes an entry that contains multiple homographs."""
+        self.metrics['split_entry_count'] += 1
+        for part in split_parts:
+            if part.strip():
+                processor = EntryProcessor(part, word)
+                processed_part = processor.process()
+                if re.search(r'<b><sup>[IVXL]+</sup></b>\s*<span class="headword">', processed_part):
+                    # A headword is already present, so use the part as-is.
+                    final_definition = processed_part
+                else:
+                    # The headword is missing, so we prepend it.
+                    headword_b_tag = f' <span class="headword"><b>{word}</b></span>'
+                    final_definition = processed_part.replace('</b>', '</b>' + headword_b_tag, 1)
+
+                self._create_entry(entry_word, final_definition)
+
+    def _process_single_entry(self, entry_word, word: str, definition: str):
+        """Processes a standard, non-homograph entry."""
+        processor = EntryProcessor(definition, word)
+        processed_definition = processor.process()
+        headword_div = f'<span class="headword"><b>{word}</b></span>'
+        final_definition = headword_div + processed_definition
+
+        if re.search(
+            r'<span class="headword"><b>(.*?)</b></span>(<blockquote>)?<b>(<span class="abbreviation">[‖¶†]</span>\s)?[\w\u00C0-\u017F\u0180-\u024F\u02C8\' &\-\.]',
+            final_definition): # \u02C8 is ˈ
+            # If the headword was already present, we don't need to prepend it, so remove it.
+            # Seems backwards to do it this way but it is much safer.
+            final_definition = final_definition.replace(headword_div, '', 1)
+            # Finally, wrap the headword in a span tag, to match the expected format.
+            final_definition = re.sub(r'<b>(.*?)</b>', r'<span class="headword"><b>\1</b></span>', final_definition, count=1)
+        elif re.search(r'<span class="headword"><b>(.*?)</b></span>(<i>)?(<span class="abbreviation">\w|[\w])', final_definition):
+            # some entries (see "gen") need some space
+            final_definition = final_definition.replace(headword_div, headword_div + ' ', 1)
+
+        self._create_entry(entry_word, final_definition)
+
+    def _write_output(self):
+        """Writes the final Stardict files, including CSS and .syn handling."""
+        output_dir = Path(self.output_ifo_name)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # And back to Stradict we go!
+        self.glos.setInfo("description", "This dictionary includes alternate search keys to make abbreviations searchable with and without their trailing full stops. " \
+                    "This feature does not include grammatical inflections.")
+        self.glos.setInfo("date", time.strftime("%Y-%m-%d"))
+        css_path = self.input_tsv.parent / 'style.css'
+        if css_path.is_file():
+            try:
+                # Open the CSS file in mode and read its content
+                with open(css_path, 'rb') as f_css:
+                    css_content = f_css.read()
+
+                    # Create a data entry for the stylesheet
+                    css_entry = self.glos.newDataEntry(f"../{self.output_ifo_name}.css", css_content)
+                    self.glos.addEntry(css_entry)
+                    print(f"--> Attached stylesheet: '{css_path}'")
+            except Exception as e:
+                print(f"--> Warning: Could not read or add CSS file '{css_path}'. Error: {e}")
+        else:
+            print("--> No 'style.css' file found in the source directory. Skipping.")
+        try:
+            output_base_path = output_dir / Path(self.output_ifo_name).name
+            if self.add_syns:
+                self.glos.write(str(output_base_path), formatName="Stardict")
+            else:
+                self.glos.write(str(output_base_path), formatName="StardictMergeSyns")
+            time.sleep(2)  # Ensure the file is written before proceeding
+            syn_dz_path = output_base_path.with_suffix('.syn.dz')
+            if syn_dz_path.is_file():
+                print(f"--> Decompressing '{syn_dz_path}'...")
+                subprocess.run(f"dictzip -d \"{syn_dz_path}\"", shell=True, check=True)
+        except Exception as e:
+            sys.exit(f"An error occurred during the write process: {e}")
+
+    def _print_summary(self):
+        """Prints the final metrics and summary of the conversion process."""
+        end_time = time.time()
+        duration = end_time - self.start_time
+        minutes, seconds = divmod(duration, 60)
+
+        print("\n----------------------------------------------------")
+        print(f"Process complete. New dictionary '{self.output_ifo_name}.ifo' created.")
+        print("----------------------------------------------------")
+        print("Metrics:")
+        print(f"- Entries read from source TSV:     {self.metrics['source_entry_count']:,}")
+        print(f"- Entries with homographs split:    {self.metrics['split_entry_count']:,}")
+        print(f"- Unique headwords processed:       {len(self.unique_headwords):,}")
+        print(f"- Malformed lines skipped:          {self.metrics['malformed_lines']:,}")
+        if self.add_syns:
+            print(f"- Synonyms added from b-tags:       {self.metrics['synonyms_added_count']:,}")
+        print(f"- Words ending in full stops found: {self.metrics['dotted_words']:,}")
+        print(f"- Full stops corrected:             {self.metrics['dot_corrected']:,}")
+        print(f"- Total final entries written:      {self.metrics['final_entry_count']:,}")
+        print(f"- Total execution time:             {int(minutes):02d}:{int(seconds):02d}")
+        print("----------------------------------------------------\n")
 
 
 if __name__ == "__main__":
@@ -504,4 +319,6 @@ if __name__ == "__main__":
     parser.add_argument("output_ifo", type=str, help="Base name for the new output Stardict files (e.g., 'OED_2ed').")
     parser.add_argument("--add-syns", action="store_true", help="Scan HTML for b-tags and add their cleaned content as synonyms for the entry.")
     args = parser.parse_args()
-    run_processing(args.input_tsv, args.output_ifo, args.add_syns)
+
+    converter = DictionaryConverter(args.input_tsv, args.output_ifo, args.add_syns)
+    converter.run()
