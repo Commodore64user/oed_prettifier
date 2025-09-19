@@ -20,10 +20,12 @@ class SynonymExtractor:
 
     IGNORED_SYN_WORDS = {'to', 'or', 'and', 'a', 'an', 'the', 'after', 'before', 'in', 'on', 'at', 'for', 'with', 'by', 'of', 'from', 'Derivatives.',
                          'that', 'which', 'who', 'whom', 'whose', 'as', 'than', 'like', 'such', 'so', 'but', 'if', 'when', 'up', 'down', 'Compounds.'}
+    PAREN_PATTERN = re.compile(r'\(.*?\)')
 
     @staticmethod
     def _clean_synonym(text: str) -> str:
         """Removes unwanted characters from a potential synonym string."""
+        text = SynonymExtractor.PAREN_PATTERN.sub('', text)
         for char, replacement in SynonymExtractor.SYNONYM_CLEANUP_MAP.items():
             text = text.replace(char, replacement)
         return text.strip()
