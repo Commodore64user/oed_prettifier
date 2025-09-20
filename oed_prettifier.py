@@ -6,7 +6,7 @@ import time
 import shutil
 import subprocess
 from pathlib import Path
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from pyglossary.glossary_v2 import Glossary
 from pyglossary.entry import Entry
 from entry_processor import EntryProcessor
@@ -54,7 +54,12 @@ class SynonymExtractor:
     @staticmethod
     def extract(headword: str, html: str) -> list[str]:
         """Extracts potential synonyms from <b> tags within the definition HTML."""
-        soup = BeautifulSoup(html, 'html.parser')
+        # In the extract method, replace the original soup line with this block:
+        try:
+            soup = BeautifulSoup(html, 'lxml')
+        except Exception:
+            # If lxml fails, fall back to the more lenient, built-in parser.
+            soup = BeautifulSoup(html, 'html.parser')
         cleaned_syns = set()
 
         clean_headword = SynonymExtractor._clean_synonym(headword.strip())
@@ -71,17 +76,39 @@ class SynonymExtractor:
             if sup.parent and sup.parent.name == 'b':
                 sup.decompose()
 
-        sense_markers = soup.find_all('span', class_=['senses', 'subsenses', 'pos'])
-        definition_blocks = {marker.find_parent('blockquote') for marker in sense_markers if marker.find_parent('blockquote')}
+        # Categorize all <b> tags into strict or lax processing sets.
+        lax_tags = set()
+        strict_tags = set()
+
+        pos_blocks = [tag.find_parent('blockquote') for tag in soup.find_all('span', class_='pos')]
+        if pos_blocks and 'forms' in pos_blocks[0].get_text(strip=True).lower():
+            start_node = pos_blocks[0]
+            end_node = pos_blocks[1] if len(pos_blocks) > 1 else None
+
+            current_node = start_node
+            while current_node:
+                current_node = current_node.find_next_sibling()
+                if not current_node or current_node == end_node:
+                    break
+                if isinstance(current_node, Tag):
+                    lax_tags.update(current_node.find_all('b'))
 
         all_b_tags = set(soup.find_all('b'))
-        tags_in_blocks = set()
-        for block in definition_blocks:
-            tags_in_blocks.update(block.find_all('b'))
-        tags_outside_blocks = all_b_tags - tags_in_blocks
+        remaining_tags = all_b_tags - lax_tags
 
-        # Process tags INSIDE definition blocks with the special filter
-        for tag in tags_in_blocks:
+        strict_blocks = {marker.find_parent('blockquote') for marker in soup.find_all('span', class_=['senses', 'subsenses']) if marker.find_parent('blockquote')}
+        if lax_tags and pos_blocks:
+            strict_blocks.discard(pos_blocks[0])
+
+        for tag in remaining_tags:
+            is_in_strict_block = any(block for block in strict_blocks if block and block.find(lambda t: t is tag))
+            if is_in_strict_block:
+                strict_tags.add(tag)
+            else:
+                lax_tags.add(tag)
+
+        # Process tags that require the strict headword-containment check.
+        for tag in strict_tags:
             synonym_text = SynonymExtractor._clean_synonym(tag.get_text())
             validated = SynonymExtractor._prepare_and_validate_synonym(clean_headword, word_initial, synonym_text)
 
@@ -89,11 +116,10 @@ class SynonymExtractor:
             if validated and clean_headword.lower() in validated.lower():
                 cleaned_syns.add(validated)
 
-        # Process tags OUTSIDE definition blocks
-        for tag in tags_outside_blocks:
+        # Process all tags that require lax validation in a single loop.
+        for tag in lax_tags:
             synonym_text = SynonymExtractor._clean_synonym(tag.get_text())
             validated = SynonymExtractor._prepare_and_validate_synonym(clean_headword, word_initial, synonym_text)
-
             if validated:
                 cleaned_syns.add(validated)
 
