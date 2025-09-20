@@ -79,7 +79,11 @@ class SynonymExtractor:
         lax_tags = set()
         strict_tags = set()
 
-        pos_blocks = [tag.find_parent('blockquote') for tag in soup.find_all('span', class_='pos')]
+        pos_blocks = []
+        for tag in soup.find_all('span', class_='pos'):
+            parent_block = tag.find_parent('blockquote')
+            if parent_block:
+                pos_blocks.append(parent_block)
         if pos_blocks and 'forms' in pos_blocks[0].get_text(strip=True).lower():
             start_node = pos_blocks[0]
             end_node = pos_blocks[1] if len(pos_blocks) > 1 else None
@@ -95,7 +99,11 @@ class SynonymExtractor:
         all_b_tags = set(soup.find_all('b'))
         remaining_tags = all_b_tags - lax_tags
 
-        strict_blocks = {marker.find_parent('blockquote') for marker in soup.find_all('span', class_=['senses', 'subsenses']) if marker.find_parent('blockquote')}
+        strict_blocks = set()
+        for marker in soup.find_all('span', class_=['senses', 'subsenses']):
+            parent_block = marker.find_parent('blockquote')
+            if parent_block:
+                strict_blocks.add(parent_block)
         if lax_tags and pos_blocks:
             strict_blocks.discard(pos_blocks[0])
 
