@@ -196,6 +196,8 @@ class DictionaryConverter:
             definition = "<br/>proverb, (in the Bible) Proverbs"
         elif word == "Div.":
             definition = "<br/>division, divinity"
+        elif word == ". s. d.":
+            word = "l. s. d."
         # For some bizarre and unbeknown reason, these abbreviation entries have their definition duplicated
         # so we will have to verify if it is the case (it is!) and clean it up. After that we will add a synonym
         # entry for the headword without the leading full stop, so koreader can find it without editing.

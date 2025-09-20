@@ -163,7 +163,11 @@ class EntryProcessor:
         html = html.replace('{oqq}', '\u201C')  # Left double quotation mark
         html = html.replace('{cqq}', '\u201D')  # Right double quotation mark
         html = html.replace('{nfced}', '\u00B8') # cedilla [squiggly bit only, which technically is what a cedilla is ;)]
-        html = html.replace('{aacuced}', '\u00e1') # needs more research see "id-al-adha"
+        html = html.replace('{aacuced}', '\u00e1') # verified by og quote, see "id-al-adha" or issue #12
+        html = html.replace('{pstlg}', '£')
+        html = html.replace('{supg}', 'g') # odd one, seems to be just a regular 'g'
+        html = html.replace('{ddag}', '‡')
+        html = html.replace('{ormg}', '[ormg]') # OED shows it like this, hard to tell what it actually is at the moment. tracked in #12
         def replace_cedilla(match):
             letter = match.group(1)
             cedilla_map = {
@@ -171,7 +175,7 @@ class EntryProcessor:
                 'c': '\u00e7', # ç
                 'C': '\u00c7', # Ç
                 'S': '\u015e',
-                # 'i': 'i\u0327', # see "Lamba"
+                'i': 'i\u0327', # see "Lamba" or issue #12
                 'd': 'd\u0327', # ḑ
                 't': '\u0163', # ţ
                 'z': 'z\u0327', # z̧
