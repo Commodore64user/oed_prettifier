@@ -112,8 +112,9 @@ class EntryProcessor:
         html = re.sub(r'<blockquote>([\u03b1-\u03c9]<sup>[0-9]</sup>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL) # greek letters
 
         # These are mini etymologies found for specific senses (i.e., not the main at the top of the entry).
-        html = html.replace('<blockquote>[', '<div class="etymology">[')
-        html = html.replace(']</blockquote>', ']</div>')
+        # Note: this needs rethinking, see issue #3
+        # html = html.replace('<blockquote>[', '<blockquote class="etymology">[')
+        # html = html.replace(']</blockquote>', ']</div>')
 
         html = html.replace('<span style="color:#8B008B">', '<span class="quotes">')
         html = re.sub(r'</span><b>(\??(<i>)?[acp0-9])', r'</span> <b>\1', html)
@@ -131,6 +132,7 @@ class EntryProcessor:
         html = re.sub(r'<span style="color:#4B0082">(\[?[IVXL]+\.\]?)</span>', r'<span class="major-division">\1</span>', html)
         html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?)</span>', r'<span class="pos">\1</span>', html)
         html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[IVXL]+\.\]?)</span>', r'<span class="pos">\1</span> <span class="major-division">\2</span>', html)
+        html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[0-9]+\.\]?)</span>', r'<span class="pos">\1</span> <span class="senses">\2</span>', html)
 
         html = re.sub(
             r'(<blockquote><b><span class="(?:senses|subsenses)">[a-z0-9]+\.</span></b>) (.*?\(<i>[\u03b1-\u03c9]</i>\).*?)</blockquote>',
