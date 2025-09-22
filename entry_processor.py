@@ -57,8 +57,7 @@ class EntryProcessor:
             r'\1 <span class="author">\4</span> ',
             html
         )
-        html = re.sub(
-            r'(<span class="author">[^<]*</span>)\s+((?:in\s+)?<i>[^<]*</i>)', r'\1 <span class="title">\2</span>', html)
+        html = re.sub(r'(<span class="author">[^<]*</span>)\s+((?:in\s+)?<i>[^<]*</i>)', r'\1 <span class="title">\2</span>', html)
         html = re.sub( # Handle author + number reference pattern (like Ormin 9500)
             r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>)\s+([^\s<]+(?:\s+[^\s<]+)*)\s+(\d+)\s+<span style="color:#8B008B">',
             r'\1 <span class="author">\3</span> <span class="reference">\4</span> <span style="color:#8B008B">',
@@ -86,9 +85,9 @@ class EntryProcessor:
         # Then let's try finding the correct closing tag for the etymology block. stop_pos is a point at which it will for sure have closed.
         stop_pos = html.find('<b><span style="color:#4B0082">')
         search_text = html[:stop_pos] if stop_pos != -1 else html
-        result, count = re.subn(r'\](</span>)</blockquote>', ']</span></div>', search_text, count=1)
+        result, count = re.subn(r'\](</span>)</blockquote>', ']</span></blockquote></div>', search_text, count=1)
         if count == 0:
-            result = re.sub(r'\]</blockquote>', ']</div>', result, count=1)
+            result = re.sub(r'\]</blockquote>', ']</blockquote></div>', result, count=1)
         html = result + (html[stop_pos:] if stop_pos != -1 else '')
         # Not quite done yet, now add class to all other blockquotes inside the etymology block.
         def process_etymology(match):
@@ -197,7 +196,7 @@ class EntryProcessor:
                 'I': '\u012c',    'O': '\u014e',   # Ŏ
                 'j': 'j\u0306',   'n': 'n\u0306',  # n̆
                 'nf': '\u0306',   'ae': 'æ̆̆',
-                'go': 'o\u0306',       'sq': '', # see issue #12
+                'go': 'o\u0306',  'sq': '', # see issue #12
                 'ymac': 'y\u0304\u0306',   'kmac': 'k\u0304\u0306',
                 'oemac': '\u0153\u0304\u0306', #'gamac': 'FILLER_gamac_breve',
                 'aemac': '\u00e6\u0304\u0306', 'ohook': '\u01eb\u0306',
