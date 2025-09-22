@@ -187,23 +187,23 @@ class EntryProcessor:
         html = re.sub(r'⊇', 'e', html)
         # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
         html = re.sub(r'\u2013 ([,;\.])', f'– <b>{re.escape(self.headword)}</b>' + r'\1', html) # n-dash –
-        # def replace_breve(match):
-        #     letter = match.group(1)
-        #     breve_map = {
-        #         'c': 'c\u0306',   's': 's\u0306',  # s̆
-        #         'y': 'y\u0306',   'A': '\u0102',   # Ă
-        #         'z': 'z\u0306',   'G': '\u011e',   # Ğ
-        #         'r': 'r\u0306',   'S': 'S\u0306',  # S̆
-        #         'I': '\u012c',    'O': '\u014e',   # Ŏ
-        #         'j': 'j\u0306',   'n': 'n\u0306',  # n̆
-        #         'nf': '\u0306',   #'ae': 'FILLER_ae_breve',
-        #         # 'go': 'FILLER_go_breve',       'sq': 'FILLER_sq_breve',
-        #         # 'ymac': 'FILLER_ymac_breve',   'kmac': 'FILLER_kmac_breve',
-        #         # 'oemac': 'FILLER_oemac_breve', 'gamac': 'FILLER_gamac_breve',
-        #         # 'aemac': 'FILLER_aemac_breve', 'ohook': 'FILLER_ohook_breve',
-        #     }
-        #     return breve_map.get(letter, match.group(0))
-        # html = re.sub(r'\{([^}]+)breve\}', replace_breve, html)
+        def replace_breve(match):
+            letter = match.group(1)
+            breve_map = {
+                'c': 'c\u0306',   's': 's\u0306',  # s̆
+                'y': 'y\u0306',   'A': '\u0102',   # Ă
+                'z': 'z\u0306',   'G': '\u011e',   # Ğ
+                'r': 'r\u0306',   'S': 'S\u0306',  # S̆
+                'I': '\u012c',    'O': '\u014e',   # Ŏ
+                'j': 'j\u0306',   'n': 'n\u0306',  # n̆
+                'nf': '\u0306',   'ae': 'æ̆̆',
+                'go': 'o\u0306',       'sq': '', # see issue #12
+                'ymac': 'y\u0304\u0306',   'kmac': 'k\u0304\u0306',
+                'oemac': '\u0153\u0304\u0306', #'gamac': 'FILLER_gamac_breve',
+                'aemac': '\u00e6\u0304\u0306', 'ohook': '\u01eb\u0306',
+            }
+            return breve_map.get(letter, match.group(0))
+        html = re.sub(r'\{([^}]+)breve\}', replace_breve, html)
 
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
         # Handle "Author abbreviation." pattern (like "Francis tr.")
