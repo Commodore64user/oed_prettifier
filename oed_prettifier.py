@@ -74,14 +74,15 @@ class DictionaryConverter:
                         self._process_metadata_line(line)
                     else:
                         self._process_entry_line(line)
+
+            print()
+            print("--> Processing complete. Writing Stardict files...")
+            self._write_output()
+            self._print_summary()
         except Exception as e:
             sys.exit(f"Error processing TSV file: {e}")
-
-        print()
-        print("--> Processing complete. Writing Stardict files...")
-        self._write_output()
-        self._print_summary()
-        self._cleanup()
+        finally:
+            self._cleanup()
 
     def _process_entry_line(self, line: str):
         """Processes a single dictionary entry line."""

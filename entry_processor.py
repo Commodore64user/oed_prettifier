@@ -100,6 +100,7 @@ class EntryProcessor:
         # Heuristic approach to wrap in the forms section. note: there are multiple variations here so other forms sections found deep
         # into an entry might not be captured. HELP WANTED #fixme.
         html = re.sub(r'<blockquote>(Forms:?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
+        html = re.sub(r'<blockquote>(?:<i>)?(Compared.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Also [0-9].*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(<abr>Pa.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Past and <abr>pple.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
