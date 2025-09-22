@@ -196,7 +196,7 @@ class EntryProcessor:
                 'I': '\u012c',    'O': '\u014e',   # Ŏ
                 'j': 'j\u0306',   'n': 'n\u0306',  # n̆
                 'nf': '\u0306',   'ae': 'æ̆̆',
-                'go': 'o\u0306',  'sq': '', # see issue #12
+                'go': '\u03bf\u0306',  'sq': '', # see issue #12
                 'ymac': 'y\u0304\u0306',   'kmac': 'k\u0304\u0306',
                 'oemac': '\u0153\u0304\u0306', #'gamac': 'FILLER_gamac_breve',
                 'aemac': '\u00e6\u0304\u0306', 'ohook': '\u01eb\u0306',
