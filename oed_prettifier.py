@@ -15,7 +15,7 @@ class DictionaryConverter:
     """Orchestrates the conversion from a TSV file to a Stardict dictionary."""
     CORE_HOMOGRAPH_PATTERN = r'<b><span style="color:#8B008B">▪ <span>[IVXL]+\.</span></span></b>'
 
-    def __init__(self, input_tsv: Path, output_ifo: str, add_syns: bool):
+    def __init__(self, input_tsv: Path, output_ifo: str, add_syns: bool, debug_words: list[str] | None):
         if not input_tsv.is_file():
             sys.exit(f"Error: Input TSV file not found at '{input_tsv}'")
         self.input_tsv = input_tsv
@@ -28,6 +28,7 @@ class DictionaryConverter:
             'synonyms_added_count': 0, 'total_entries': 0
         }
         self.unique_headwords = set()
+        self.debug_words = set(debug_words) if debug_words else None
         Glossary.init()
         self.glos = Glossary()
         self.homograph_pattern = re.compile(f'(?={self.CORE_HOMOGRAPH_PATTERN})')
@@ -61,6 +62,8 @@ class DictionaryConverter:
     def run(self):
         """Reads a TSV file, splits homographs, processes the HTML of each part,
         and prepares the glossary for writing."""
+        if self.debug_words:
+            print(f"--> Running in DEBUG mode for headword(s): {', '.join(sorted(self.debug_words))}")
         print(f"--> Reading and processing '{self.input_tsv}'...")
         try:
             with open(self.input_tsv, 'r', encoding='utf-8') as f:
@@ -96,6 +99,8 @@ class DictionaryConverter:
             percent = (self.metrics['source_entry_count'] / self.metrics['total_entries']) * 100
             print(f"--> Processing: {self.metrics['source_entry_count']}/{self.metrics['total_entries']} ({percent:.1f}%)", end='\r')
         word, definition = parts
+        if self.debug_words and word not in self.debug_words:
+            return
         self.unique_headwords.add(word)
 
         if word.endswith(('.', '‖', '¶', '†')):
@@ -119,7 +124,10 @@ class DictionaryConverter:
             key, value = key.strip(), value.strip()
             if key == 'wordcount':
                 try:
-                    self.metrics['total_entries'] = int(value)
+                    if self.debug_words:
+                        self.metrics['total_entries'] = len(self.debug_words)
+                    else:
+                        self.metrics['total_entries'] = int(value)
                 except ValueError:
                     pass # Ignore if wordcount isn't a valid number
             print(f"    - Found metadata: '{key}' = '{value}'")
@@ -198,6 +206,8 @@ class DictionaryConverter:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # And back to Stradict we go!
+        if self.debug_words:
+            self.glos.setInfo("title", "debug OED")
         self.glos.setInfo("description", "This dictionary includes alternate search keys to make abbreviations searchable with and without their trailing full stops. " \
                     "This feature does not include grammatical inflections.")
         self.glos.setInfo("date", time.strftime("%Y-%m-%d"))
@@ -274,7 +284,8 @@ if __name__ == "__main__":
     parser.add_argument("input_tsv", type=Path, help="Path to the source .tsv file.")
     parser.add_argument("output_ifo", type=str, help="Base name for the new output Stardict files (e.g., 'OED_2ed').")
     parser.add_argument("--add-syns", action="store_true", help="Scan HTML for b-tags and add their cleaned content as synonyms for the entry.")
+    parser.add_argument("--debug", nargs='+', help="Run the script only for the specified headword(s) to speed up testing.")
     args = parser.parse_args()
 
-    converter = DictionaryConverter(args.input_tsv, args.output_ifo, args.add_syns)
+    converter = DictionaryConverter(args.input_tsv, args.output_ifo, args.add_syns, args.debug)
     converter.run()
