@@ -43,6 +43,9 @@ class DictionaryConverter:
             # Ensure we pass a string headword (not a list) to extract_synonyms to avoid .strip() on a list
             synonyms = SynonymExtractor.extract(source_words[0], final_definition)
             if synonyms:
+                if self.debug_words:
+                    sorted_syns = sorted(synonyms, key=lambda s: (len(s), s))
+                    print(f"--> Synonyms (by length): {'; '.join(sorted_syns)}")
                 source_words.extend(synonyms)
                 original_word_count = len(entry_word) if isinstance(entry_word, list) else 1
                 synonyms_added = len(source_words) - original_word_count
@@ -96,8 +99,11 @@ class DictionaryConverter:
 
         self.metrics['source_entry_count'] += 1
         if self.metrics['total_entries'] > 0:
-            percent = (self.metrics['source_entry_count'] / self.metrics['total_entries']) * 100
-            print(f"--> Processing: {self.metrics['source_entry_count']}/{self.metrics['total_entries']} ({percent:.1f}%)", end='\r')
+            if self.debug_words:
+                print(f"--> Processing: {self.metrics['source_entry_count']}/{self.metrics['total_entries']}", end='\r')
+            else:
+                percent = (self.metrics['source_entry_count'] / self.metrics['total_entries']) * 100
+                print(f"--> Processing: {self.metrics['source_entry_count']}/{self.metrics['total_entries']} ({percent:.1f}%)", end='\r')
         word, definition = parts
         if self.debug_words and word not in self.debug_words:
             return
