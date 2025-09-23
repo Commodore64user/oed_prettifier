@@ -57,15 +57,19 @@ blockquote.etymology-notes {
 /* part of speech */
 .pos {
     color: #000000;
+    font-size: 1.1rem;
 }
 .major-division {
     color: #070707; /* was dark indigo 4B0082*/
+    font-size: 1.1rem;
 }
 .senses {
     color: #095c09; /* was dark indigo 4B0082*/
+    font-size: 1.1rem;
 }
 .subsenses {
     color:#008200; /* was dark indigo 4B0082*/
+    font-size: 1.1rem;
 }
 
 .kref {
