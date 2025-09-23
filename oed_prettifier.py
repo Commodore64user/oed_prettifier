@@ -45,7 +45,7 @@ class DictionaryConverter:
             if synonyms:
                 if self.debug_words:
                     sorted_syns = sorted(synonyms, key=lambda s: (len(s), s))
-                    print(f"--> Synonyms (by length): {'; '.join(sorted_syns)}")
+                    print(f"--> Synonyms for '{entry_word}': {'; '.join(sorted_syns)}")
                 source_words.extend(synonyms)
                 original_word_count = len(entry_word) if isinstance(entry_word, list) else 1
                 synonyms_added = len(source_words) - original_word_count
