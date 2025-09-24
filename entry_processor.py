@@ -12,24 +12,22 @@ class EntryProcessor:
     def _process_pos_forms_section(html: str) -> str:
         """Finds a 'forms' section demarcated by <span class="pos"> markers
         and wraps any unstyled sense/subsense blockquotes within that range."""
-        # Quick pre-check to avoid parsing unnecessarily.
-        if 'class="pos"' not in html:
-            return html
-
         try:
             soup = BeautifulSoup(html, 'lxml')
         except Exception:
             soup = BeautifulSoup(html, 'html.parser')
 
-        pos_spans = soup.find_all('span', class_='pos', limit=2)
-        if len(pos_spans) < 2:
+        first_pos_span = soup.find('span', class_='pos')
+        if not first_pos_span or 'forms' not in first_pos_span.get_text(strip=True).lower():
             return html
-
-        start_node = pos_spans[0].find_parent('blockquote')
-        end_node = pos_spans[1].find_parent('blockquote')
-
-        # Check the trigger *before* doing more work.
-        if 'forms' not in start_node.get_text(strip=True).lower():
+        start_node = first_pos_span.find_parent('blockquote')
+        if not start_node:
+            return html
+        second_pos_span = first_pos_span.find_next('span', class_='pos')
+        if not second_pos_span:
+            return html
+        end_node = second_pos_span.find_parent('blockquote')
+        if not end_node or start_node is end_node:
             return html
 
         # Collect all target nodes in a separate list before modifying the document.
@@ -64,7 +62,7 @@ class EntryProcessor:
 
         html = re.sub(r'(<span>[IVXL]+\.</span></span></b>)\s*(<blockquote>)?(<b>.*?</b>)(</blockquote>)?', r'\1 <span class="headword">\3</span>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>\(<span style="color:#2F4F4F">(.*?)</span>\)</blockquote>', r' (<span class="phonetic">\1</span>)', html, flags=re.DOTALL)
-        html = re.sub(r'<span style="color:#2F4F4F">(.*?)</span>', r' (<span class="phonetic">\1</span>)', html, flags=re.DOTALL)
+        html = re.sub(r'<span style="color:#2F4F4F">(.*?)</span>', r'<span class="phonetic">\1</span>', html, flags=re.DOTALL)
 
         html = html.replace('<blockquote><ex>', '<div class="quotations">')
         html = html.replace('</ex></blockquote>', '</div>')
@@ -186,7 +184,6 @@ class EntryProcessor:
         #     html,
         #     flags=re.DOTALL
         # )
-        html = self._process_pos_forms_section(html)
 
         html = re.sub(r'</blockquote><blockquote>(\s*)(<b>)?<span class=', r'</blockquote><blockquote class="definition-partial">\1\2<span class=', html)
         html = re.sub(r'(_____</blockquote>)<blockquote>', r'\1<blockquote class="addendum">', html)
@@ -194,6 +191,8 @@ class EntryProcessor:
         # This seems to be introducing some false positives, see entry "in", but overall it follows the OED pattern,
         # so keeping it for now, however it might need to be revisited. #fixme.
         html = html.replace('</blockquote><blockquote>', '</blockquote><blockquote class="usage-note">')
+        if 'class="pos"' in html:
+            html = self._process_pos_forms_section(html)
 
         # see "them"'s etymology.
         def replace_acute(match):
