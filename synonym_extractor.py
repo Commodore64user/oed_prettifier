@@ -7,7 +7,7 @@ class SynonymExtractor:
     """Handles extraction and cleaning of synonyms from entry HTML."""
     SYNONYM_CLEANUP_MAP = {
         "†": "",   "*": "",   "ˈ": "",   "ˌ": "",   "(": "",   ")": "",   "[": "",   "]": "",   "‖": "",   "¶": "",   "?": "",   "!": "",
-        "–": "",   "—": "",   ";": "",   ":": "",
+        "–": "",   "—": "",   ";": "",   ":": "",   "  ": " "
     }
 
     IGNORED_SYN_WORDS = {'to', 'or', 'and', 'a', 'an', 'the', 'after', 'before', 'in', 'on', 'at', 'for', 'with', 'by', 'of', 'from', 'Derivatives.',
@@ -39,6 +39,10 @@ class SynonymExtractor:
         # Skip overly long multi-word synonyms (likely phrases rather than single synonyms)
         if len(final_synonym.split()) > 4:
             return None
+        if final_synonym.endswith('..'):
+            final_synonym = final_synonym.rstrip('.')
+        if '..' in final_synonym:
+            return None
         # some entries (e.g., plover) when creating compounds, use "p." as shorthands
         final_synonym = final_synonym.replace(word_initial + ".", headword)
         return final_synonym
@@ -66,6 +70,9 @@ class SynonymExtractor:
         for sup in soup.find_all('sup'):
             if sup.parent and sup.parent.name == 'b':
                 sup.decompose()
+
+        for span in soup.find_all('span', class_='headword'):
+            span.decompose()
 
         # Categorize all <b> tags into strict or lax processing sets.
         lax_tags = set()
