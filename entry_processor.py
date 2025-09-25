@@ -1,5 +1,5 @@
 import re
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, Tag, FeatureNotFound
 
 class EntryProcessor:
     """Encapsulates all HTML cleaning and processing for a single dictionary entry."""
@@ -14,7 +14,7 @@ class EntryProcessor:
         and wraps any unstyled sense/subsense blockquotes within that range."""
         try:
             soup = BeautifulSoup(html, 'lxml')
-        except Exception:
+        except FeatureNotFound:
             soup = BeautifulSoup(html, 'html.parser')
 
         pos_spans = soup.find_all('span', class_='pos', limit=2)
@@ -26,6 +26,9 @@ class EntryProcessor:
         if 'forms' not in start_node.get_text(strip=True).lower():
             return html
         end_node = pos_spans[1].find_parent('blockquote')
+        # Guard against invalid start/end nodes to prevent uncontrolled loops.
+        if not start_node or not end_node or start_node is end_node:
+            return html
 
         # Collect all target nodes in a separate list before modifying the document.
         targets_to_wrap = []
@@ -33,7 +36,7 @@ class EntryProcessor:
         while current_node and current_node != end_node:
             if (isinstance(current_node, Tag) and
                     current_node.name == 'blockquote' and not current_node.has_attr('class') and
-                    current_node.find('span', class_=['senses', 'subsenses']) and current_node.find('b')):
+                    current_node.find('span', class_=['senses', 'subsenses'])):
 
                 if not current_node.find_parent(class_='forms'):
                     targets_to_wrap.append(current_node)
