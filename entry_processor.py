@@ -46,6 +46,7 @@ class EntryProcessor:
         # Fix dates, only match exactly 3 or 4 digit years. This should turn "c 1500" into "c1500" or "? a 1300" into "?a1300".
         html = re.sub(r'<b>(\?)?\s?<i>([acp])</i> (\d{3,4})(\u2013\d{2})?</b>', r'<b>\1<i>\2</i>\3\4</b>', html)
         html = re.sub(r'<b>(\?)?\s?(\d{3,4})(\u2013\d{2})?</b>', r'<b>\1\2\3</b>', html)
+        html = re.sub(r'<b>(\?)?(\d{3,4})(\u2013\d{2})?</b>([^\s])', r'<b>\1\2\3</b> \4', html)
         # Handle anonymous "in Source" patterns first, we add a placeholder which will be removed later.
         html = re.sub(
             r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+((?:in\s+[^<]*|―\s+)<i>.*?</i>)',
