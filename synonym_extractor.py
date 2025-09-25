@@ -36,6 +36,10 @@ class SynonymExtractor:
             return None
         if re.fullmatch(r'[0-9]\.?', final_synonym):
             return None
+        if re.fullmatch(r'[IVXL]+\. [0-9]+\.', final_synonym):
+            return None
+        if re.fullmatch(r'[0-9]+\. [a-z]\.', final_synonym):
+            return None
         # Skip overly long multi-word synonyms (likely phrases rather than single synonyms)
         if len(final_synonym.split()) > 4:
             return None
