@@ -1,4 +1,5 @@
 import re
+from bs4 import BeautifulSoup, Tag, FeatureNotFound
 
 class EntryProcessor:
     """Encapsulates all HTML cleaning and processing for a single dictionary entry."""
@@ -6,6 +7,55 @@ class EntryProcessor:
     def __init__(self, html: str, headword: str):
         self.html = html
         self.headword = headword
+
+    @staticmethod
+    def _process_pos_forms_section(html: str) -> str:
+        """Finds a 'forms' section demarcated by <span class="pos"> markers
+        and wraps any unstyled sense/subsense blockquotes within that range."""
+        try:
+            soup = BeautifulSoup(html, 'lxml')
+        except FeatureNotFound:
+            soup = BeautifulSoup(html, 'html.parser')
+
+        pos_spans = soup.find_all('span', class_='pos', limit=2)
+        if len(pos_spans) < 2:
+            return html
+
+        start_node = pos_spans[0].find_parent('blockquote')
+        # Check the trigger *before* doing more work.
+        if start_node is None or 'forms' not in start_node.get_text(strip=True).lower():
+            return html
+        end_node = pos_spans[1].find_parent('blockquote')
+        # Guard against invalid start/end nodes to prevent uncontrolled loops.
+        if not end_node or start_node is end_node:
+            return html
+
+        # Collect all target nodes in a separate list before modifying the document.
+        targets_to_wrap = []
+        current_node = start_node
+        while current_node and current_node != end_node:
+            if (isinstance(current_node, Tag) and
+                    current_node.name == 'blockquote' and not current_node.has_attr('class') and
+                    current_node.find('span', class_=['senses', 'subsenses'])):
+
+                if not current_node.find_parent(class_='forms'):
+                    targets_to_wrap.append(current_node)
+
+            current_node = current_node.find_next_sibling()
+
+        # Safely iterate over the collected list to modify the soup object.
+        for blockquote_node in targets_to_wrap:
+            all_b_tags = blockquote_node.find_all('b')
+
+            # Check for a 'content' <b> tag (one without a nested <span>).
+            for b_tag in all_b_tags:
+                if not b_tag.find('span'):
+                    # If found, wrap the blockquote and stop checking this node.
+                    wrapper_div = soup.new_tag('div', attrs={'class': 'forms'})
+                    blockquote_node.wrap(wrapper_div)
+                    break
+
+        return str(soup)
 
     def process(self) -> str:
         """Runs the full suite of cleaning and formatting operations on the HTML."""
@@ -19,6 +69,7 @@ class EntryProcessor:
 
         html = re.sub(r'(<span>[IVXL]+\.</span></span></b>)\s*(<blockquote>)?(<b>.*?</b>)(</blockquote>)?', r'\1 <span class="headword">\3</span>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>\(<span style="color:#2F4F4F">(.*?)</span>\)</blockquote>', r' (<span class="phonetic">\1</span>)', html, flags=re.DOTALL)
+        html = re.sub(r'<span style="color:#2F4F4F">(.*?)</span>', r'<span class="phonetic">\1</span>', html, flags=re.DOTALL)
 
         html = html.replace('<blockquote><ex>', '<div class="quotations">')
         html = html.replace('</ex></blockquote>', '</div>')
@@ -86,9 +137,9 @@ class EntryProcessor:
         # Then let's try finding the correct closing tag for the etymology block. stop_pos is a point at which it will for sure have closed.
         stop_pos = html.find('<b><span style="color:#4B0082">')
         search_text = html[:stop_pos] if stop_pos != -1 else html
-        result, count = re.subn(r'\](</span>)</blockquote>', ']</span></blockquote></div>', search_text, count=1)
+        result, count = re.subn(r'\](</span>)</blockquote>', ']</span></blockquote></div> ', search_text, count=1)
         if count == 0:
-            result = re.sub(r'\]</blockquote>', ']</blockquote></div>', result, count=1)
+            result = re.sub(r'\]</blockquote>', ']</blockquote></div> ', result, count=1)
         html = result + (html[stop_pos:] if stop_pos != -1 else '')
         # Not quite done yet, now add class to all other blockquotes inside the etymology block.
         def process_etymology(match):
@@ -135,19 +186,24 @@ class EntryProcessor:
         html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[IVXL]+\.\]?)</span>', r'<span class="pos">\1</span> <span class="major-division">\2</span>', html)
         html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[0-9]+\.\]?)</span>', r'<span class="pos">\1</span> <span class="senses">\2</span>', html)
 
-        html = re.sub(
-            r'(<blockquote><b><span class="(?:senses|subsenses)">[a-z0-9]+\.</span></b>) (.*?\(<i>[\u03b1-\u03c9]</i>\).*?)</blockquote>',
-            r'\1 <span class="forms">\2</span></blockquote>',
-            html,
-            flags=re.DOTALL
-        )
+        # html = re.sub(
+        #     r'(<blockquote><b><span class="(?:senses|subsenses)">[a-z0-9]+\.</span></b>) (.*?\(<i>[\u03b1-\u03c9]</i>\).*?)</blockquote>',
+        #     r'\1 <span class="forms">\2</span></blockquote>',
+        #     html,
+        #     flags=re.DOTALL
+        # ) -- deprecated
+        if 'class="pos"' in html:
+            html = self._process_pos_forms_section(html)
 
+        # it is crazy how the mind forgets, why one does things ¯\_(ツ)_/¯, i believe this is here so main sections don't get turned into usage-notes.
         html = re.sub(r'</blockquote><blockquote>(\s*)(<b>)?<span class=', r'</blockquote><blockquote class="definition-partial">\1\2<span class=', html)
         html = re.sub(r'(_____</blockquote>)<blockquote>', r'\1<blockquote class="addendum">', html)
         html = re.sub(r'<blockquote>\*', '<blockquote class="subheading">*', html)
         # This seems to be introducing some false positives, see entry "in", but overall it follows the OED pattern,
         # so keeping it for now, however it might need to be revisited. #fixme.
         html = html.replace('</blockquote><blockquote>', '</blockquote><blockquote class="usage-note">')
+        html = re.sub(r'(</blockquote></div>)(<blockquote><b><span class="major-division">)', r'\1 \2', html)
+        html = html.replace('</blockquote></div><blockquote>', '</blockquote></div><blockquote class="usage-note">')
 
         # see "them"'s etymology.
         def replace_acute(match):
