@@ -23,11 +23,11 @@ class EntryProcessor:
 
         start_node = pos_spans[0].find_parent('blockquote')
         # Check the trigger *before* doing more work.
-        if 'forms' not in start_node.get_text(strip=True).lower():
+        if start_node is None or 'forms' not in start_node.get_text(strip=True).lower():
             return html
         end_node = pos_spans[1].find_parent('blockquote')
         # Guard against invalid start/end nodes to prevent uncontrolled loops.
-        if not start_node or not end_node or start_node is end_node:
+        if not end_node or start_node is end_node:
             return html
 
         # Collect all target nodes in a separate list before modifying the document.
