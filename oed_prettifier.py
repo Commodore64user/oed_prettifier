@@ -215,8 +215,8 @@ class DictionaryConverter:
         # And back to Stradict we go!
         if self.debug_words:
             self.glos.setInfo("title", "debug OED")
-        self.glos.setInfo("description", "This dictionary includes alternate search keys to make abbreviations searchable with and without their trailing full stops. " \
-                    "This feature does not include grammatical inflections.")
+        self.glos.setInfo("description", "This dictionary was created using Commodore64user's oed_prettifier, if you encounter any formatting issues, do not hesitate to report them" \
+                    "in the GitHub repo. Happy reading!")
         self.glos.setInfo("date", time.strftime("%Y-%m-%d"))
         css_path = self.input_tsv.parent / 'style.css'
         if css_path.is_file():
