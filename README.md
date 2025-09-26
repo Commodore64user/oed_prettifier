@@ -69,7 +69,7 @@ python oed_prettifier.py <input_tsv_path> <output_ifo_name> [--add-syns]
 python3.13 oed_prettifier.py /dictionaries/OED_raw.tsv OED_2ed_prettified
 ```
 
-Place the `style.css` file in the same directory as the `.tsv` file. This ensures all the necessary files for your new Stardict version are generated correctly. If `style.css` is missing from the directory, the script will not create a `.css` file; in that case, rename the existing `style.css` to match your chosen filename (`OED_2ed_prettified` in the previous example). You’re now ready to enjoy your new Stardict version of the OED.
+Ensure all script files are placed together in the same directory, including the `style.css` file. This ensures all the necessary files for your new Stardict version are generated correctly. If `style.css` is missing from the directory, the script will not create a `.css` file; in that case, rename the existing `style.css` to match your chosen filename (`OED_2ed_prettified` in the previous example). You’re now ready to enjoy your new Stardict version of the OED.
 
 ## How It Works
 

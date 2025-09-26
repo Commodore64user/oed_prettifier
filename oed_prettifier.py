@@ -216,9 +216,10 @@ class DictionaryConverter:
         if self.debug_words:
             self.glos.setInfo("title", "debug OED")
         self.glos.setInfo("description", "This dictionary was created using Commodore64user's oed_prettifier, if you encounter any formatting issues, do not hesitate to report them" \
-                    "in the GitHub repo. Happy reading!")
+                    " in the GitHub repo. Happy reading!")
         self.glos.setInfo("date", time.strftime("%Y-%m-%d"))
-        css_path = self.input_tsv.parent / 'style.css'
+        script_dir = Path(__file__).resolve().parent
+        css_path = script_dir / 'style.css'
         if css_path.is_file():
             try:
                 with open(css_path, 'rb') as f_css:
