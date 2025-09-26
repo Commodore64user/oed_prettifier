@@ -30,7 +30,8 @@ class EntryProcessor:
         if not end_node or start_node is end_node:
             return html
 
-        # Collect all target nodes in a separate list before modifying the document.
+        # Collect all target nodes in a separate list before modifying the document,
+        # we want to ensure we only wrap sections with actual forms in them.
         targets_to_wrap = []
         current_node = start_node
         while current_node and current_node != end_node:
@@ -46,7 +47,6 @@ class EntryProcessor:
         # Safely iterate over the collected list to modify the soup object.
         for blockquote_node in targets_to_wrap:
             all_b_tags = blockquote_node.find_all('b')
-
             # Check for a 'content' <b> tag (one without a nested <span>).
             for b_tag in all_b_tags:
                 if not b_tag.find('span'):
@@ -186,12 +186,6 @@ class EntryProcessor:
         html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[IVXL]+\.\]?)</span>', r'<span class="pos">\1</span> <span class="major-division">\2</span>', html)
         html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[0-9]+\.\]?)</span>', r'<span class="pos">\1</span> <span class="senses">\2</span>', html)
 
-        # html = re.sub(
-        #     r'(<blockquote><b><span class="(?:senses|subsenses)">[a-z0-9]+\.</span></b>) (.*?\(<i>[\u03b1-\u03c9]</i>\).*?)</blockquote>',
-        #     r'\1 <span class="forms">\2</span></blockquote>',
-        #     html,
-        #     flags=re.DOTALL
-        # ) -- deprecated
         if 'class="pos"' in html:
             html = self._process_pos_forms_section(html)
 
@@ -234,7 +228,7 @@ class EntryProcessor:
                 'c': '\u00e7', # ç
                 'C': '\u00c7', # Ç
                 'S': '\u015e',
-                'i': 'i\u0327', # see "Lamba" or issue #12
+                'i': 'i\u0327', # see "Lamba" or issue https://github.com/Commodore64user/oed_prettifier/issues/12
                 'd': 'd\u0327', # ḑ
                 't': '\u0163', # ţ
                 'z': 'z\u0327', # z̧
@@ -254,7 +248,7 @@ class EntryProcessor:
                 'I': '\u012c',    'O': '\u014e',   # Ŏ
                 'j': 'j\u0306',   'n': 'n\u0306',  # n̆
                 'nf': '\u0306',   'ae': 'æ̆̆',
-                'go': '\u03bf\u0306',  'sq': '', # see issue #12
+                'go': '\u03bf\u0306',  'sq': '', # see issue https://github.com/Commodore64user/oed_prettifier/issues/12
                 'ymac': 'y\u0304\u0306',   'kmac': 'k\u0304\u0306',
                 'oemac': '\u0153\u0304\u0306', #'gamac': 'FILLER_gamac_breve',
                 'aemac': '\u00e6\u0304\u0306', 'ohook': '\u01eb\u0306',

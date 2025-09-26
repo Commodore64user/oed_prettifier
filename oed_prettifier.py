@@ -221,7 +221,6 @@ class DictionaryConverter:
         css_path = self.input_tsv.parent / 'style.css'
         if css_path.is_file():
             try:
-                # Open the CSS file in mode and read its content
                 with open(css_path, 'rb') as f_css:
                     css_content = f_css.read()
 
@@ -237,7 +236,7 @@ class DictionaryConverter:
             output_base_path = output_dir / Path(self.output_ifo_name).name
             if self.add_syns:
                 self.glos.write(str(output_base_path), formatName="Stardict")
-            else:
+            else: # don't create a syn file for the 1000-ish abbreviations we're adding.
                 self.glos.write(str(output_base_path), formatName="StardictMergeSyns")
             time.sleep(2)  # Ensure the file is written before proceeding
             syn_dz_path = output_base_path.with_suffix('.syn.dz')

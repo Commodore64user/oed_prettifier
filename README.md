@@ -22,18 +22,18 @@ The ultimate goal is to produce a "prettified" and more usable version of the OE
 
 To run this script, you will need:
 
-* Python 3.9+
+* Python 3.10+
 * PyGlossary: A Python library for converting dictionary formats.
-* beautifulsoup4: A Python library for parsing for pulling data out of HTML and XML files.
+* beautifulsoup4: A Python library for parsing and pulling data out of HTML and XML files.
 * dictzip: A command-line tool for compressing Stardict dictionary files. It is part of the `dictd` package on most Linux distributions.
 
 ## Installation (on macOS)
 
-Clone the repo or download the script and style files.
+Clone the repo or download the zipped script files.
 
 **Install PyGlossary:**
 ```bash
-python3 pip install pyglossary beautifulsoup4
+python3 pip install pyglossary beautifulsoup4 lxml
 ```
 
 * **On macOS (using Homebrew):**
@@ -75,7 +75,7 @@ Place the `style.css` file in the same directory as the `.tsv` file. This ensure
 
 The script is built around an object-oriented design with three core components, each handling a distinct part of the conversion process.
 
-### `DictionaryConverter` (The Orchestrator ⚙️)
+### `DictionaryConverter` (The Orchestrator)
 
 This is the main engine of the script. It manages the entire workflow from reading the input file to writing the final dictionary.
 
@@ -84,7 +84,7 @@ This is the main engine of the script. It manages the entire workflow from readi
 * **Delegation**: It delegates cleaning HTML or extracting synonyms. It creates an `EntryProcessor` instance for cleaning and calls the `SynonymExtractor` to find synonyms.
 * **Glossary Building**: It manages the `pyglossary` object, adding each processed entry. Finally, it writes the completed Stardict files and decompresses the `.syn.dz` file for KOReader compatibility.
 
-### `EntryProcessor` (The HTML Cleaner 🧹)
+### `EntryProcessor` (The HTML Cleaner)
 
 This class is a dedicated worker responsible for all low-level HTML manipulation. It takes the raw, messy HTML of a single entry and transforms it into a clean(er), semantic structure.
 
@@ -95,7 +95,7 @@ Its key operations are a pipeline of regular expression substitutions that:
 * Identify and wrap phonetic transcriptions, quotations, and cross-references in `<span>` tags.
 * Standardise the format of dates, authors, and titles within quotations.
 
-### `SynonymExtractor` (The Keyword Miner ⛏️)
+### `SynonymExtractor` (The Keyword Miner)
 
 This is a specialised utility class for finding and cleaning potential synonyms, which are used as alternate search keys in the dictionary.
 
