@@ -265,6 +265,8 @@ class EntryProcessor:
             r'\1 <span class="author">\2 \3</span> \4 \5',
             html
         )
+        # handle authors with abbreviated names.
+        html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) (<abr>[\w]+\.</abr>)\s([0-9]+)', r'\1 <span class="author">\2</span> \3', html)
         # This grew out of control, but is seems to be held together by fairy dust, it works although this should have been done in a more structured way.
         html = re.sub(
             r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) ([^<]*)?<abr>([\w]+\.)</abr>\s([\w]+)?\s?((<i>)?[0-9]?\s?)(<i>|<abr>)',
