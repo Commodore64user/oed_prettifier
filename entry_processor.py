@@ -1,4 +1,5 @@
 import re
+import html as html_module
 from bs4 import BeautifulSoup, Tag, FeatureNotFound
 
 class EntryProcessor:
@@ -237,7 +238,8 @@ class EntryProcessor:
         html = re.sub(r'\{([actdzCS])ced\}', replace_cedilla, html)
         html = re.sub(r'⊇', 'e', html)
         # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
-        html = re.sub(r'\u2013 ([,;\.])', f'– <b>{re.escape(self.headword)}</b>' + r'\1', html) # n-dash –
+        html = re.sub(r'\u2013 ([,;\.])', f'– <b>{html_module.escape(self.headword)}</b>' + r'\1', html)
+        html = re.sub(r'([0-9]) ([,;\.])', r'\1' + f' <b>{html_module.escape(self.headword)}</b>' + r'\2', html)
         def replace_breve(match):
             letter = match.group(1)
             breve_map = {
