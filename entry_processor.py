@@ -221,6 +221,10 @@ class EntryProcessor:
         html = html.replace('{pstlg}', '£')
         html = html.replace('{supg}', 'g') # odd one, seems to be just a regular 'g'
         html = html.replace('{ddag}', '‡')
+        html = html.replace('{ruasper}', 'u\u0314') # u̔
+        html = html.replace('{roasper}', 'o\u0314') # o̓
+        html = html.replace('{nfasper}', '\u0314')
+        html = html.replace('{egyasper}', '[egyasper]')
         html = html.replace('{ormg}', '[ormg]') # OED shows it like this, hard to tell what it actually is at the moment. tracked in #12
         def replace_cedilla(match):
             letter = match.group(1)
