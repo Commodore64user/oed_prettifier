@@ -224,7 +224,7 @@ class EntryProcessor:
         html = html.replace('{ruasper}', 'u\u0314') # u̔
         html = html.replace('{roasper}', 'o\u0314') # o̓
         html = html.replace('{nfasper}', '\u0314')
-        html = html.replace('{egyasper}', '[egyasper]')
+        html = html.replace('{egyasper}', '[egyasper]') # still needs revision, same as following line
         html = html.replace('{ormg}', '[ormg]') # OED shows it like this, hard to tell what it actually is at the moment. tracked in #12
         def replace_cedilla(match):
             letter = match.group(1)
@@ -261,6 +261,24 @@ class EntryProcessor:
             }
             return breve_map.get(letter, match.group(0))
         html = re.sub(r'\{([^}]+)breve\}', replace_breve, html)
+        # def replace_mac(match):
+        #     letter = match.group(1)
+        #     mac_map = {
+        #         'g': '',   'n': '',
+        #         'S': '',   'I': '',
+        #         'z': '',   'w': '',
+        #         'nf': '\u0304',   'oe': '',
+        #         'gh': '',    'Ae': '',
+        #         'ope': '',   'revv': '',
+        #         'revr': '',   'obar': '',
+        #         'ahook': '',  'schwa': '',
+        #         'shtsyll': '',   'rcircbl': '',
+        #         'edotbl': '', 'odotbl': '',
+        #         'alenis': '', 'ilenis': '',
+        #         'ibreve': '', 'abreve': '',
+        #     }
+        #     return mac_map.get(letter, match.group(0))
+        # html = re.sub(r'\{([^}]+)mac\}', replace_mac, html)
 
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
         # Handle "Author abbreviation." pattern (like "Francis tr.")
