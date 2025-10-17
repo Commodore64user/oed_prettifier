@@ -264,9 +264,9 @@ class EntryProcessor:
         # def replace_mac(match):
         #     letter = match.group(1)
         #     mac_map = {
-        #         'g': '',   'n': '',
-        #         'S': '',   'I': '',
-        #         'z': '',   'w': '',
+        #         'g': 'g\u0304',   'n': 'n\u0304',
+        #         'S': 'S\u0304',   'I': 'I\u0304',
+        #         'z': 'z\u0304',   'w': 'w\u0304',
         #         'nf': '\u0304',   'oe': '',
         #         'gh': '',    'Ae': '',
         #         'ope': '',   'revv': '',
