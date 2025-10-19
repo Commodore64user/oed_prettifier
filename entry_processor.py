@@ -160,6 +160,7 @@ class EntryProcessor:
         html = re.sub(r'<blockquote>(Pl. <b>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Usually in <abr>pl.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(commonly in (?:<i>)?<abr>pl.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
+        html = re.sub(r'<blockquote>(Inflected .*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         # sometimes the 'forms' section is placed below its normal location and is preceded by a greek letter, e.g., "α", so we need to capture that too.
         html = re.sub(r'<blockquote>(\(<i>[\u03b1-\u03c9]</i>\).*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>([\u03b1-\u03c9]<sup>[0-9]</sup>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL) # greek letters
