@@ -7,7 +7,6 @@ import shutil
 import subprocess
 from pathlib import Path
 from pyglossary.glossary_v2 import Glossary
-from pyglossary.entry import Entry
 from entry_processor import EntryProcessor
 from synonym_extractor import SynonymExtractor
 
@@ -56,11 +55,11 @@ class DictionaryConverter:
         other_words.discard(main_headword)
         all_words = [main_headword] + sorted(list(other_words))
 
-        # PyGlossary 5.1.1 switched from arg 'word' to 'term', se we need to handle both APIs
-        try: # new API
-            entry = Entry(term=all_words, defi=final_definition, defiFormat='h')
-        except TypeError: # old API (word parameter)
-            entry = Entry(word=all_words, defi=final_definition, defiFormat='h')
+        entry = self.glos.newEntry(
+            word=all_words,
+            defi=final_definition,
+            defiFormat='h'
+        )
         self.glos.addEntry(entry)
 
         self.metrics['synonyms_added_count'] += synonyms_added
