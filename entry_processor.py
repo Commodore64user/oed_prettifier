@@ -255,7 +255,7 @@ class EntryProcessor:
                 'I': '\u012c',    'O': '\u014e',   # Ŏ
                 'j': 'j\u0306',   'n': 'n\u0306',  # n̆
                 'nf': '\u0306',   'ae': 'æ̆̆',
-                'go': '\u03bf\u0306',  'sq': '', # see issue https://github.com/Commodore64user/oed_prettifier/issues/12
+                'go': '\u03bf\u0306',  #'sq': '', # see issue https://github.com/Commodore64user/oed_prettifier/issues/12
                 'ymac': 'y\u0304\u0306',   'kmac': 'k\u0304\u0306',
                 'oemac': '\u0153\u0304\u0306', #'gamac': 'FILLER_gamac_breve',
                 'aemac': '\u00e6\u0304\u0306', 'ohook': '\u01eb\u0306',
@@ -280,6 +280,18 @@ class EntryProcessor:
         #     }
         #     return mac_map.get(letter, match.group(0))
         # html = re.sub(r'\{([^}]+)mac\}', replace_mac, html)
+        def replace_bar(match):
+            letter = match.group(1)
+            bar_map = {
+                'o': '\u00F8', # ø
+                'L': '\u0141',
+                'i': '\u0268',
+                # 'p': '', # no clue either, see issue https://github.com/Commodore64user/oed_prettifier/issues/12
+                'u': '\u0289',
+                # 'th': '', # no idea what this is, see issue https://github.com/Commodore64user/oed_prettifier/issues/12
+            }
+            return bar_map.get(letter, match.group(0))
+        html = re.sub(r'\{([^}]+)bar\}', replace_bar, html)
 
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
         # Handle "Author abbreviation." pattern (like "Francis tr.")
