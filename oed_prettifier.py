@@ -239,9 +239,9 @@ class DictionaryConverter:
         try:
             output_base_path = output_dir / Path(self.output_ifo_name).name
             if self.add_syns:
-                self.glos.write(str(output_base_path), formatName="Stardict")
+                self.glos.write(str(output_base_path), formatName="Stardict", dictzip=True)
             else: # don't create a syn file for the 1000-ish abbreviations we're adding.
-                self.glos.write(str(output_base_path), formatName="StardictMergeSyns")
+                self.glos.write(str(output_base_path), formatName="StardictMergeSyns", dictzip=True)
             time.sleep(2)  # Ensure the file is written before proceeding
             syn_dz_path = output_base_path.with_suffix('.syn.dz')
             if syn_dz_path.is_file():
