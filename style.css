@@ -27,9 +27,9 @@ blockquote {
     padding: 0.5em;
     font-size: 0.7em; /* adjust as needed currently 70% */
 }
-.etymology-main {
-    color: #808080; /* grey */
-}
+/* .etymology-main {
+    color: #808080;
+} */
 blockquote.etymology-notes {
     margin-left: 0.5em;
 }
