@@ -96,7 +96,6 @@ class DictionaryConverter:
                 for future in as_completed(futures):
                     try:
                         result = future.result()
-                        # --- Existing result processing logic starts here ---
                         if result['status'] == 'ok':
                             for res in result['results']:
                                 self._create_entry(res['words'], res['definition'])
