@@ -186,11 +186,22 @@ class DictionaryConverter:
                 self.glos.write(str(output_base_path), formatName="Stardict", dictzip=True)
             else: # don't create a syn file for the 1000-ish abbreviations we're adding.
                 self.glos.write(str(output_base_path), formatName="StardictMergeSyns", dictzip=True)
-            time.sleep(2)  # Ensure the file is written before proceeding
             syn_dz_path = output_base_path.with_suffix('.syn.dz')
             if syn_dz_path.is_file():
                 print(f"--> Decompressing '{syn_dz_path}'...")
-                subprocess.run(f"dictzip -d \"{syn_dz_path}\"", shell=True, check=True)
+                max_retries, retry_delay = 5, 1
+                for attempt in range(max_retries):
+                    try:
+                        # Run the command, check=True will raise CalledProcessError on failure
+                        subprocess.run(f"dictzip -d \"{syn_dz_path}\"", shell=True, check=True)
+                        break
+                    except subprocess.CalledProcessError as e:
+                        if attempt < max_retries - 1:
+                            print(f"\n--> Attempt {attempt + 1} failed, retrying in {retry_delay}s...")
+                            time.sleep(retry_delay)
+                        else:
+                            print(f"\n--> All {max_retries} attempts to decompress failed.")
+                            raise e
         except Exception as e:
             sys.exit(f"An error occurred during the write process: {e}")
 
