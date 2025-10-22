@@ -54,7 +54,7 @@ The script is run from the command line and accepts three arguments: the path to
 ### Syntax
 
 ```bash
-python oed_prettifier.py <input_tsv_path> <output_ifo_name> [--add-syns]
+python oed_prettifier.py <input_tsv_path> <output_ifo_name> [--add-syns] [--workers N]
 ```
 
 ### Arguments
@@ -62,11 +62,19 @@ python oed_prettifier.py <input_tsv_path> <output_ifo_name> [--add-syns]
 * `input_tsv_path`: The full path to the source dictionary file in TSV format.
 * `output_ifo_name`: The desired base name for the output files. The script will generate files like `OED_2ed.ifo`, `OED_2ed.idx`, etc., from this name. You do not need to provide an extension, i.e., `.ifo`.
 * `--add-syns`: (optional) This flag will inspect each definition and add any bold tags it encounters as synonyms. Note: this will add roughly a million synonyms to the `.syn` file, so use at your own discretion.
+* `--workers N`: (optional) By default, the script uses (N = logical cores - 1) as the number of workers. For example, on a system with 8 logical cores, it will use 7 workers. However, for CPU-intensive operations (HTML parsing and regex processing), using (N = physical cores + 1) workers may be more efficient.
 
 ### Example
 
+on a quad-core processor with hyper-threading:
+
+* * Logical cores: 8
+* * Physical cores: 4
+* * Default workers: 7 (logical cores - 1)
+* * Potentially optimal: 5 workers (physical cores + 1)
+
 ```bash
-python3.13 oed_prettifier.py /dictionaries/OED_raw.tsv OED_2ed_prettified
+python3.13 oed_prettifier.py /dictionaries/OED_raw.tsv OED_2ed_prettified --add-syns --workers 5
 ```
 
 Ensure all script files are placed together in the same directory, including the `style.css` file. This ensures all the necessary files for your new Stardict version are generated correctly. If `style.css` is missing from the directory, the script will not create a `.css` file; in that case, rename the existing `style.css` to match your chosen filename (`OED_2ed_prettified` in the previous example). You’re now ready to enjoy your new Stardict version of the OED.
@@ -79,10 +87,16 @@ The script is built around an object-oriented design with three core components,
 
 This is the main engine of the script. It manages the entire workflow from reading the input file to writing the final dictionary.
 
-* **File Handling**: It reads the source TSV file line by line and dispatches each line to the appropriate handler—either for metadata or for a dictionary entry.
+* **File Handling**: It reads the source TSV file line by line and delegates tasks to its team (workers), waits for them to report back, and then assembles the final product.
+* **Glossary Building**: It manages the `pyglossary` object, adding each processed entry. Finally, it writes the completed Stardict files and decompresses the `.syn.dz` file for KOReader compatibility.
+* **Metrics**: It handles the final client-facing summary report (the metrics). It doesn't do any of the granular, intensive labour itself.
+
+### `processing_worker` (The Workers)
+
+This module contains the specialists who do all the heavy lifting. Each worker process takes a single task, delegates the intensive labour of HTML parsing and synonym extraction, and reports its finished component back to the manager.
+
 * **Entry Management**: It parses each entry, handles the quirks of abbreviations (like `adj.`), and determines if an entry contains multiple homographs.
 * **Delegation**: It delegates cleaning HTML or extracting synonyms. It creates an `EntryProcessor` instance for cleaning and calls the `SynonymExtractor` to find synonyms.
-* **Glossary Building**: It manages the `pyglossary` object, adding each processed entry. Finally, it writes the completed Stardict files and decompresses the `.syn.dz` file for KOReader compatibility.
 
 ### `EntryProcessor` (The HTML Cleaner)
 

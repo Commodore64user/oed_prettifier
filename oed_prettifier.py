@@ -19,8 +19,11 @@ class DictionaryConverter:
         self.input_tsv = input_tsv
         self.output_ifo_name = output_ifo
         self.add_syns = add_syns
+        self.debug_words = set(debug_words) if debug_words else None
 
-        if workers is not None:
+        if self.debug_words:
+            self.workers = 1
+        elif workers is not None:
             self.workers = max(1, min(workers, os.cpu_count() or 1))
         else:
             self.workers = max(1, (os.cpu_count() or 1) - 1)
@@ -33,7 +36,6 @@ class DictionaryConverter:
         }
         self.processing_errors = []
         self.unique_headwords = set()
-        self.debug_words = set(debug_words) if debug_words else None
         Glossary.init()
         self.glos = Glossary()
 
@@ -52,7 +54,8 @@ class DictionaryConverter:
         """Reads a TSV file, processes entries in parallel, and prepares the glossary."""
         if self.debug_words:
             print(f"--> Running in DEBUG mode for headword(s): {', '.join(sorted(self.debug_words))}")
-        print(f"--> Using {self.workers} worker processes.")
+        label = "process" if self.workers == 1 else "processes"
+        print(f"--> Using {self.workers} worker {label}.")
         print(f"--> Reading and processing '{self.input_tsv}'...")
 
         try:
@@ -123,7 +126,7 @@ class DictionaryConverter:
                     completed_count += 1
 
                     # Update progress bar and spinner, but throttle it to avoid excessive printing,
-                    # modulo 97 (prime number), provides a good, random-ish progress feedback.
+                    # modulo 97 (prime number), provides a good distributed and periodic progress feedback to users.
                     if completed_count % 97 == 0 or completed_count == len(tasks):
                         percent = (completed_count / len(tasks)) * 100
                         print(f"\r--> Processing: {next(spinner)} {completed_count:,}/{len(tasks):,} ({percent:.1f}%)", end='', flush=True)
@@ -145,8 +148,10 @@ class DictionaryConverter:
         if len(meta_parts) == 2:
             key, value = meta_parts
             if key.strip() == 'wordcount' and not self.debug_words:
-                try: self.metrics['total_entries'] = int(value.strip())
-                except ValueError: pass
+                try:
+                    self.metrics['total_entries'] = int(value.strip())
+                except ValueError:
+                    pass
             print(f"    - Found metadata: '{key.strip()}' = '{value.strip()}'")
             self.glos.setInfo(key.strip(), value.strip())
 
