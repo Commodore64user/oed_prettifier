@@ -125,7 +125,7 @@ class DictionaryConverter:
                     completed_count += 1
 
                     # Update progress bar and spinner, but throttle it to avoid excessive printing,
-                    # modulo 97 (prime number) provides good distributed, seemingly unpredictable and periodic progress feedback to users.
+                    # modulo 97 (prime number) provides good distribution, seemingly unpredictable and periodic progress feedback to users.
                     if completed_count % 97 == 0 or completed_count == len(tasks):
                         percent = (completed_count / len(tasks)) * 100
                         print(f"\r--> Processing: {next(spinner)} {completed_count:,}/{len(tasks):,} ({percent:.1f}%)", end='', flush=True)
