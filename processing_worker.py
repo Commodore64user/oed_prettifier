@@ -37,7 +37,7 @@ def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
     entry_word = [word, alt_key]
     return entry_word, definition, metrics
 
-def finalize_entry(base_word: list[str] | str, final_definition: str, add_syns: bool) -> dict:
+def finalise_entry(base_word: list[str] | str, final_definition: str, add_syns: bool) -> dict:
     """Takes a processed definition, extracts synonyms, and packages the final entry data."""
     all_words = list(base_word) if isinstance(base_word, list) else [base_word]
     syn_count = 0
@@ -88,7 +88,7 @@ def process_entry_line_worker(line_tuple: tuple[str, bool]) -> dict:
                         headword_b_tag = f' <span class="headword"><b>{word}</b></span>'
                         final_definition = processed_part.replace('</b>', '</b>' + headword_b_tag, 1)
 
-                    final_entry = finalize_entry(entry_word_base, final_definition, add_syns)
+                    final_entry = finalise_entry(entry_word_base, final_definition, add_syns)
                     processed_results.append(final_entry)
                     metrics['synonyms_added'] += final_entry['syn_count']
         else:
@@ -110,7 +110,7 @@ def process_entry_line_worker(line_tuple: tuple[str, bool]) -> dict:
                 # some entries (see "gen") need some space
                 final_definition = final_definition.replace(headword_div, headword_div + ' ', 1)
 
-            final_entry = finalize_entry(entry_word_base, final_definition, add_syns)
+            final_entry = finalise_entry(entry_word_base, final_definition, add_syns)
             processed_results.append(final_entry)
             metrics['synonyms_added'] += final_entry['syn_count']
 

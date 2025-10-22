@@ -24,7 +24,7 @@ To run this script, you will need:
 
 * Python 3.10+
 * PyGlossary: A Python library for converting dictionary formats.
-* beautifulsoup4: A Python library for parsing and pulling data out of HTML and XML files.
+* Beautifulsoup4: A Python library for parsing and pulling data out of HTML and XML files.
 * dictzip: A command-line tool for compressing Stardict dictionary files. It is part of the `dictd` package on most Linux distributions.
 
 ## Installation (on macOS)
@@ -68,10 +68,10 @@ python oed_prettifier.py <input_tsv_path> <output_ifo_name> [--add-syns] [--work
 
 on a quad-core processor with hyper-threading:
 
-* * Logical cores: 8
-* * Physical cores: 4
-* * Default workers: 7 (logical cores - 1)
-* * Potentially optimal: 5 workers (physical cores + 1)
+* * logical cores: 8
+* * physical cores: 4
+* * default workers: 7 (logical cores - 1)
+* * potentially optimal: 5 workers (physical cores + 1)
 
 ```bash
 python3.13 oed_prettifier.py /dictionaries/OED_raw.tsv OED_2ed_prettified --add-syns --workers 5
@@ -81,24 +81,24 @@ Ensure all script files are placed together in the same directory, including the
 
 ## How It Works
 
-The script is built around an object-oriented design with three core components, each handling a distinct part of the conversion process.
+The script is built around an object-oriented design with four core components, each handling a distinct part of the conversion process.
 
 ### `DictionaryConverter` (The Orchestrator)
 
 This is the main engine of the script. It manages the entire workflow from reading the input file to writing the final dictionary.
 
-* **File Handling**: It reads the source TSV file line by line and delegates tasks to its team (workers), waits for them to report back, and then assembles the final product.
+* **File Handling**: It reads the source TSV file line by line and delegates tasks to its team (workers), waits for them to report back, and then assembles the final product. It doesn't do any of the granular, intensive labour itself.
 * **Glossary Building**: It manages the `pyglossary` object, adding each processed entry. Finally, it writes the completed Stardict files and decompresses the `.syn.dz` file for KOReader compatibility.
-* **Metrics**: It handles the final client-facing summary report (the metrics). It doesn't do any of the granular, intensive labour itself.
+* **Metrics**: It handles the final client-facing summary report (the metrics).
 
 ### `processing_worker` (The Workers)
 
 This module contains the specialists who do all the heavy lifting. Each worker process takes a single task, delegates the intensive labour of HTML parsing and synonym extraction, and reports its finished component back to the manager.
 
 * **Entry Management**: It parses each entry, handles the quirks of abbreviations (like `adj.`), and determines if an entry contains multiple homographs.
-* **Delegation**: It delegates cleaning HTML or extracting synonyms. It creates an `EntryProcessor` instance for cleaning and calls the `SynonymExtractor` to find synonyms.
+* **Delegation**: It delegates cleaning HTML or extracting synonyms to the specialist. It creates an `EntryProcessor` instance for cleaning and calls the `SynonymExtractor` to find synonyms.
 
-### `EntryProcessor` (The HTML Cleaner)
+### `EntryProcessor` (The HTML Cleaner Specialist)
 
 This class is a dedicated worker responsible for all low-level HTML manipulation. It takes the raw, messy HTML of a single entry and transforms it into a clean(er), semantic structure.
 
@@ -109,15 +109,15 @@ Its key operations are a pipeline of regular expression substitutions that:
 * Identify and wrap phonetic transcriptions, quotations, and cross-references in `<span>` tags.
 * Standardise the format of dates, authors, and titles within quotations.
 
-### `SynonymExtractor` (The Keyword Miner)
+### `SynonymExtractor` (The Keyword Miner Specialist)
 
-This is a specialised utility class for finding and cleaning potential synonyms, which are used as alternate search keys in the dictionary.
+This is a specialised utility class for finding and cleaning potential synonyms, which are used as alternative search keys in the dictionary.
 
-* **Extraction**: It parses the cleaned HTML of an entry to find all text contained within bold (`<b>`) tags, which often represent alternate forms, compounds, or related phrases.
+* **Extraction**: It parses the cleaned HTML of an entry to find all text contained within bold (`<b>`) tags, which often represent alternative forms, compounds, or related phrases.
 * **Cleaning**: Each potential synonym is passed through a cleaning process to remove punctuation, symbols, and other noise.
 * **Filtering**: It filters out common English words (like 'and', 'the', 'of') and fragments to produce a useful list of keywords.
 
-**Note**: This is an optional step that significantly increases the script's running time (approximately 4x slower) due to the overhead of parsing every entry's HTML.
+**Note**: This is an optional step that significantly increases the script's running time (depending on your system, this can be approximately 2x-4x slower) due to the overhead of parsing every entry's HTML.
 
 
 ## Screnshots
