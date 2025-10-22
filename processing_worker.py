@@ -37,7 +37,7 @@ def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
     entry_word = [word, alt_key]
     return entry_word, definition, metrics
 
-def finalise_entry(base_word: list[str] | str, final_definition: str, add_syns: bool) -> dict:
+def finalise_entry(base_word: list[str] | str, final_definition: str, add_syns: bool, debug_words: set[str] | None) -> dict:
     """Takes a processed definition, extracts synonyms, and packages the final entry data."""
     all_words = list(base_word) if isinstance(base_word, list) else [base_word]
     syn_count = 0
@@ -49,14 +49,19 @@ def finalise_entry(base_word: list[str] | str, final_definition: str, add_syns: 
         if synonyms:
             all_words.extend(synonyms)
             syn_count = len(synonyms)
+            # Although architecturally impure, this pragmatic printing to console here
+            # will avoid us a whole set of unnecessarily complex rerouting of synonyms.
+            if debug_words and headword_for_syns in debug_words:
+                sorted_syns = sorted(synonyms, key=lambda s: (len(s), s))
+                print(f"\n\n--> Synonyms for '[{headword_for_syns}]': {'; '.join(sorted_syns)}\n")
 
     return {'words': all_words, 'definition': final_definition, 'syn_count': syn_count}
 
-def process_entry_line_worker(line_tuple: tuple[str, bool]) -> dict:
+def process_entry_line_worker(line_tuple: tuple[str, bool, set[str] | None]) -> dict:
     """Worker function to process a single TSV line.
     This function is designed to be run in a separate process.
     It returns a dictionary with status, results, and metrics."""
-    line, add_syns = line_tuple
+    line, add_syns, debug_words = line_tuple
     try:
         parts = line.split('\t', 1)
         if len(parts) != 2:
@@ -88,7 +93,7 @@ def process_entry_line_worker(line_tuple: tuple[str, bool]) -> dict:
                         headword_b_tag = f' <span class="headword"><b>{word}</b></span>'
                         final_definition = processed_part.replace('</b>', '</b>' + headword_b_tag, 1)
 
-                    final_entry = finalise_entry(entry_word_base, final_definition, add_syns)
+                    final_entry = finalise_entry(entry_word_base, final_definition, add_syns, debug_words)
                     processed_results.append(final_entry)
                     metrics['synonyms_added'] += final_entry['syn_count']
         else:
@@ -110,7 +115,7 @@ def process_entry_line_worker(line_tuple: tuple[str, bool]) -> dict:
                 # some entries (see "gen") need some space
                 final_definition = final_definition.replace(headword_div, headword_div + ' ', 1)
 
-            final_entry = finalise_entry(entry_word_base, final_definition, add_syns)
+            final_entry = finalise_entry(entry_word_base, final_definition, add_syns, debug_words)
             processed_results.append(final_entry)
             metrics['synonyms_added'] += final_entry['syn_count']
 

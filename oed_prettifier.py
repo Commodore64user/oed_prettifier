@@ -79,7 +79,7 @@ class DictionaryConverter:
                     self.metrics['total_entries'] = len(all_lines)
 
             # Package lines with the add_syns flag for the workers
-            tasks = [(line, self.add_syns) for line in all_lines]
+            tasks = [(line, self.add_syns, self.debug_words) for line in all_lines]
             completed_count = 0
             spinner = itertools.cycle(['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█', '▇', '▆', '▅', '▄', '▃', '▂'])
 
