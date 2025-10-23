@@ -255,7 +255,8 @@ class EntryProcessor:
                 'I': '\u012c',    'O': '\u014e',   # Ŏ
                 'j': 'j\u0306',   'n': 'n\u0306',  # n̆
                 'nf': '\u0306',   'ae': 'æ̆̆',
-                'go': '\u03bf\u0306',  #'sq': '', # see issue https://github.com/Commodore64user/oed_prettifier/issues/12
+                # that 'sq' replacement IS supposed to be like that, don't undo it again silly...
+                'go': '\u03bf\u0306',  'sq': '', # see issue https://github.com/Commodore64user/oed_prettifier/issues/12#issuecomment-3316062903
                 'ymac': 'y\u0304\u0306',   'kmac': 'k\u0304\u0306',
                 'oemac': '\u0153\u0304\u0306', #'gamac': 'FILLER_gamac_breve',
                 'aemac': '\u00e6\u0304\u0306', 'ohook': '\u01eb\u0306',
