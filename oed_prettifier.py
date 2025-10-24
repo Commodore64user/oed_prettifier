@@ -162,8 +162,8 @@ class DictionaryConverter:
         # And back to Stradict we go!
         if self.debug_words:
             self.glos.setInfo("title", "debug OED")
-        self.glos.setInfo("description", "This dictionary was created using Commodore64user's oed_prettifier, if you encounter any formatting issues, do not hesitate to report them" \
-                    " in the GitHub repo. Happy reading!")
+        self.glos.setInfo("description", "This dictionary was created using Commodore64user's oed_prettifier, if you encounter any formatting issues, do not hesitate to report them " \
+                    "over at the GitHub repo. Happy reading!")
         self.glos.setInfo("date", time.strftime("%Y-%m-%d"))
         script_dir = Path(__file__).resolve().parent
         css_path = script_dir / 'style.css'
@@ -236,7 +236,7 @@ class DictionaryConverter:
             print(f"- Unexpected processing errors:     {len(self.processing_errors):,}")
         if self.add_syns:
             print(f"- Synonyms added from b-tags:       {self.metrics['synonyms_added_count']:,}")
-        print(f"- Words ending in full stops found: {self.metrics['dotted_words']:,}")
+        print(f"- Words found ending in full stops: {self.metrics['dotted_words']:,}")
         print(f"- Full stops corrected:             {self.metrics['dot_corrected']:,}")
         print(f"- Total final entries written:      {self.metrics['final_entry_count']:,}")
         print(f"- Total execution time:             {int(minutes):02d}:{int(seconds):02d}")
