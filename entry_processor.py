@@ -214,6 +214,7 @@ class EntryProcessor:
             }
             return accent_map.get(letter, match.group(0))
         html = re.sub(r'\{([aeiouyAEIOUY])acu\}', replace_acute, html)
+        html = html.replace('{p}', '\u02c8')  # ˈ (primary stress marker) see entry flat adv and n^3 12.b year 1901.
         html = html.replace('{ddd}', '...')
         html = html.replace('{oqq}', '\u201C')  # Left double quotation mark
         html = html.replace('{cqq}', '\u201D')  # Right double quotation mark
@@ -263,24 +264,24 @@ class EntryProcessor:
             }
             return breve_map.get(letter, match.group(0))
         html = re.sub(r'\{([^}]+)breve\}', replace_breve, html)
-        # def replace_mac(match):
-        #     letter = match.group(1)
-        #     mac_map = {
-        #         'g': 'g\u0304',   'n': 'n\u0304',
-        #         'S': 'S\u0304',   'I': 'I\u0304',
-        #         'z': 'z\u0304',   'w': 'w\u0304',
-        #         'nf': '\u0304',   'oe': '',
-        #         'gh': '',    'Ae': '',
-        #         'ope': '',   'revv': '',
-        #         'revr': '',   'obar': '',
-        #         'ahook': '',  'schwa': '',
-        #         'shtsyll': '',   'rcircbl': '',
-        #         'edotbl': '', 'odotbl': '',
-        #         'alenis': '', 'ilenis': '',
-        #         'ibreve': '', 'abreve': '',
-        #     }
-        #     return mac_map.get(letter, match.group(0))
-        # html = re.sub(r'\{([^}]+)mac\}', replace_mac, html)
+        def replace_mac(match):
+            letter = match.group(1)
+            mac_map = {
+                'g': 'g\u0304',   'n': 'n\u0304',
+                'S': 'S\u0304',   'I': 'I\u0304',
+                'z': 'z\u0304',   'w': 'w\u0304',
+                'nf': '\u0304',   'oe': '\u0153\u0304',
+                'gh': '\u03b7\u0304',    'Ae': '\u00c6\u0304',  # Ǣ
+                'ope': '\u025b\u0304',   'revv': '\u028c\u0304',
+                'revr': '\u0279\u0304',   'obar': '\u00f8\u0304',
+                'ahook': 'ą̄̄̄',  'schwa': '\u0259\u0304',
+                # 'shtsyll': '',   'rcircbl': '',
+                'edotbl': 'e\u0323\u0304', 'odotbl': 'o\u0323\u0304',
+                # 'alenis': '', 'ilenis': '', # no clue for either, seems like greek chars used in entries sun and exipotic
+                'ibreve': 'i\u0304\u0306', 'obreve': 'o\u0304\u0306',
+            }
+            return mac_map.get(letter, match.group(0))
+        html = re.sub(r'\{([^}]+)mac\}', replace_mac, html)
         def replace_bar(match):
             letter = match.group(1)
             bar_map = {
