@@ -228,6 +228,10 @@ class EntryProcessor:
         html = html.replace('{nfasper}', '\u0314')
         html = html.replace('{egyasper}', '[egyasper]') # still needs revision, same as following line
         html = html.replace('{ormg}', '[ormg]') # OED shows it like this, hard to tell what it actually is at the moment. tracked in #12
+        html = html.replace('{wlenisisub}', 'ᾠ')
+        html = html.replace('{nfacu}', '´')
+        html = html.replace('{nfgra}', 'ˋ')
+        html = html.replace('{nfcirc}', 'ˆ')
         def replace_cedilla(match):
             letter = match.group(1)
             cedilla_map = {
