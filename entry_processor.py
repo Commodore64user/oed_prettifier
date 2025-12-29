@@ -121,6 +121,11 @@ class EntryProcessor:
             r'\1 <span class="author">\3</span> <span class="line-number">\4</span> <span style="color:#8B008B">',
             html
         )
+        html = re.sub( # Handle year-digit + author (ex: <b>1925–6</b> E. Hemingway in <i>)
+            r'(<b>(?:\?)?(?:<i>[acp]</i>\s?)?(\d{3,4})(?:[-–]\d{1,2})?</b>)\s+([A-Z]\.\s+[A-Z][a-z]+)\s+in\s+(<i>)',
+            r'\1 <span class="author">\3</span> in \4',
+            html
+        )
 
         # html = re.sub(
         #     r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})(\u2013\d{2})?</b>)\s+([^\s<,]+(?:\s+[^\s<,]+)*),\s+<span class="quotes">',
