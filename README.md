@@ -8,7 +8,7 @@ The Oxford English Dictionary 2ed (originally published in 1989), which has been
 
 * **Splitting Homographs**: It correctly identifies and separates distinct homographs (words with the same spelling but different meanings and origins) into individual dictionary entries.
 * **Cleaning & Structuring HTML**: It uses a series of regular expressions to replace inline CSS styles with semantic class names, structure the entry content (e.g., etymology, forms, quotations), and clean up various formatting quirks.
-* **Handling Abbreviations**: It correctly processes entries that are abbreviations and creates alternative search keys (stardict synonyms) without the full stop for easier look-up in KOReader.
+* **Handling Abbreviations**: It processes entries that are abbreviations and creates alternative search keys (stardict synonyms) without the full stop for easier look-up in KOReader.
 * **Generating Stardict Files**: It uses the `pyglossary` library to write the processed data into a complete set of Stardict dictionary files (`.ifo`, `.dict.dz`, `.idx`, `.syn`, `.css`).
 
 ## Editorial notes
@@ -49,7 +49,7 @@ First you will need to convert your existing copy of the OED to a `.tsv` file, y
 pyglossary ode_file_name.ifo ode_new_name.tsv
 ```
 
-The script is run from the command line and accepts three arguments: the path to the input TSV file, the base name for the output Stardict files and an optional flag for adding synonyms.
+The script is run from the command line and accepts four arguments: the path to the input TSV file, the base name for the output Stardict files, an optional flag for adding synonyms and the number of workers to be used (more info further down).
 
 ### Syntax
 
@@ -61,7 +61,7 @@ python oed_prettifier.py <input_tsv_path> <output_ifo_name> [--add-syns] [--work
 
 * `input_tsv_path`: The full path to the source dictionary file in TSV format.
 * `output_ifo_name`: The desired base name for the output files. The script will generate files like `OED_2ed.ifo`, `OED_2ed.idx`, etc., from this name. You do not need to provide an extension, i.e., `.ifo`.
-* `--add-syns`: (optional) This flag will inspect each definition and add any bold tags it encounters as synonyms. Note: this will add roughly a million synonyms to the `.syn` file, so use at your own discretion.
+* `--add-syns`: (optional) This flag will inspect each definition and add any bold tags it encounters as synonyms. Note: this will add roughly half million synonyms to the `.syn` file, so use at your own discretion.
 * `--workers N`: (optional) By default, the script uses (N = logical cores - 1) as the number of workers. For example, on a system with 8 logical cores, it will use 7 workers. However, for CPU-intensive operations (HTML parsing and regex processing), using (N = physical cores + 1) workers may be more efficient.
 
 ### Example
@@ -93,17 +93,17 @@ This is the main engine of the script. It manages the entire workflow from readi
 
 ### `processing_worker` (The Workers)
 
-This module contains the specialists who do all the heavy lifting. Each worker process takes a single task, delegates the intensive labour of HTML parsing and synonym extraction, and reports its finished component back to the manager.
+This module contains the deidcated workers who do all the heavy lifting. Each worker process takes a single task, delegates the intensive labour of HTML parsing and synonym extraction, and reports its finished component back to the manager.
 
 * **Entry Management**: It parses each entry, handles the quirks of abbreviations (like `adj.`), and determines if an entry contains multiple homographs.
-* **Delegation**: It delegates cleaning HTML or extracting synonyms to the specialist. It creates an `EntryProcessor` instance for cleaning and calls the `SynonymExtractor` to find synonyms.
+* **Delegation**: It delegates cleaning HTML or extracting synonyms to the corresponding specialist. It creates an `EntryProcessor` instance for cleaning and calls the `SynonymExtractor` to find synonyms.
 
 ### `EntryProcessor` (The HTML Cleaner Specialist)
 
-This class is a dedicated worker responsible for all low-level HTML manipulation. It takes the raw, messy HTML of a single entry and transforms it into a clean(er), semantic structure.
+This class is a specialist worker responsible for all low-level HTML manipulation. It takes the raw, messy HTML of a single entry and transforms it into a clean(er), semantic structure.
 
 Its key operations are a pipeline of regular expression substitutions that:
-* Remove unwanted tags (like `<img>`) and formatting characters.
+* Remove unwanted tags and formatting characters, etc.
 * Wrap distinct sections like **etymology**, **forms**, and **usage notes** in `<div>` tags with appropriate classes.
 * Convert inline style attributes (e.g., `style="color:..."`) for sense numbers (`[1.]`, `[a.]`, etc.) into semantic CSS classes like `.senses` and `.subsenses`.
 * Identify and wrap phonetic transcriptions, quotations, and cross-references in `<span>` tags.
