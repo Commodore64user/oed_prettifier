@@ -219,6 +219,8 @@ class EntryProcessor:
             }
             return accent_map.get(letter, match.group(0))
         html = re.sub(r'\{([aeiouyAEIOUY])acu\}', replace_acute, html)
+        html = html.replace('{ppp}', '\u2034')  # ‴ (triple prime)
+        html = html.replace('{pp}', '\u02ba')   # ʺ (modifier letter double prime)
         html = html.replace('{p}', '\u02c8')  # ˈ (primary stress marker) see entry flat adv and n^3 12.b year 1901.
         html = html.replace('{ddd}', '...')
         html = html.replace('{oqq}', '\u201C')  # Left double quotation mark
