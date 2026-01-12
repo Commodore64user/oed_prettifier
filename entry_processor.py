@@ -223,6 +223,8 @@ class EntryProcessor:
         html = html.replace('{pp}', '\u02ba')   # ʺ (modifier letter double prime)
         html = html.replace('{p}', '\u02c8')  # ˈ (primary stress marker) see entry flat adv and n^3 12.b year 1901.
         html = html.replace('{ddd}', '...')
+        html = html.replace('{bra}', '⟨ |') # refers to a vector in quantum mech.
+        html = html.replace('{vb}', '\u007C') # vertical bar |
         html = html.replace('{oqq}', '\u201C')  # Left double quotation mark
         html = html.replace('{cqq}', '\u201D')  # Right double quotation mark
         html = html.replace('{nfced}', '\u00B8') # cedilla [squiggly bit only, which technically is what a cedilla is ;)]
