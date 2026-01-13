@@ -230,6 +230,7 @@ class EntryProcessor:
         html = html.replace('{nfced}', '\u00B8') # cedilla [squiggly bit only, which technically is what a cedilla is ;)]
         html = html.replace('{aacuced}', '\u00e1') # verified by og quote, see "id-al-adha" or issue #12
         html = html.replace('{pstlg}', '£')
+        html = html.replace('{pcnt}', '%')
         html = html.replace('{supg}', 'g') # odd one, seems to be just a regular 'g'
         html = html.replace('{ddag}', '‡')
         html = html.replace('{ruasper}', 'u\u0314') # u̔
