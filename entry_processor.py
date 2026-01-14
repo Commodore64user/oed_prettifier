@@ -238,6 +238,8 @@ class EntryProcessor:
         html = html.replace('{b3}', '≡')       # triple bond (identical to U+2261)
         html = html.replace('{btl1}', '−')     # top-line of manually constructed bond
         html = html.replace('{bbl1}', '−')     # bottom-line of manually constructed bond
+        html = html.replace('{btr1}', '−')    # top-line right
+        html = html.replace('{bbr1}', '−')    # bottom-line right
         html = html.replace('{supg}', 'g') # odd one, seems to be just a regular 'g'
         html = html.replace('{ddag}', '‡')
         html = html.replace('{ruasper}', 'u\u0314') # u̔
