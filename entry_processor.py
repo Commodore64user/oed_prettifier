@@ -182,6 +182,7 @@ class EntryProcessor:
         html = re.sub(r'\{sup([a-z])\}', r'<span class="small-cap-letter">\1</span>', html)
         html = re.sub(r'(</blockquote>)(<blockquote><abr>†</abr>\s*<b><span style="color:#4B0082">)', r'\1 \2', html)
         # Remove embedded styles and add classes to the spans
+        html = re.sub(r'(<span style="color:#4B0082">\[?)<abr>([a-z]\.)</abr>(\]?</span>)', r'\1\2\3', html) # stay [f.] in entry 'acid'
         html = re.sub(r'<span style="color:#4B0082">(\[?[0-9]+\.\]?)</span>', r'<span class="senses">\1</span>', html)
         html = re.sub(r'<span style="color:#4B0082">(\[?[a-z]\.\]?)</span>', r'<span class="subsenses">\1</span>', html)
         html = re.sub(r'<span style="color:#4B0082"><abr>(\[?[a-z]\.\]?)</abr></span>', r'<span class="subsenses">\1</span>', html)
@@ -240,8 +241,8 @@ class EntryProcessor:
         html = html.replace('{bbl1}', '−')     # bottom-line of manually constructed bond
         html = html.replace('{btr1}', '−')    # top-line right
         html = html.replace('{bbr1}', '−')    # bottom-line right
-        html = html.replace('{obigb}', '{')    # large opening brace
-        html = html.replace('{cbigb}', '}')    # large closing brace
+        html = html.replace('{obigb}', '{')    # large opening curly brackets
+        html = html.replace('{cbigb}', '}')    # large closing curly brackets
 
         html = html.replace('{supg}', 'g') # odd one, seems to be just a regular 'g'
         html = html.replace('{ddag}', '‡')
