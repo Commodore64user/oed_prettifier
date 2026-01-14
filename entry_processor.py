@@ -231,6 +231,13 @@ class EntryProcessor:
         html = html.replace('{aacuced}', '\u00e1') # verified by og quote, see "id-al-adha" or issue #12
         html = html.replace('{pstlg}', '£')
         html = html.replace('{pcnt}', '%')
+        # chemistry stuff
+        html = html.replace('{equil}', '⇌')    # equilibrium
+        html = html.replace('{b1}', '−')       # single bond (minus sign U+2212)
+        html = html.replace('{b2}', '=')       # double bond (equals sign U+003D)
+        html = html.replace('{b3}', '≡')       # triple bond (identical to U+2261)
+        html = html.replace('{btl1}', '−')     # top-line of manually constructed bond
+        html = html.replace('{bbl1}', '−')     # bottom-line of manually constructed bond
         html = html.replace('{supg}', 'g') # odd one, seems to be just a regular 'g'
         html = html.replace('{ddag}', '‡')
         html = html.replace('{ruasper}', 'u\u0314') # u̔
