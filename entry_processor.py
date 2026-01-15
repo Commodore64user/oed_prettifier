@@ -232,6 +232,7 @@ class EntryProcessor:
         html = html.replace('{aacuced}', '\u00e1') # verified by og quote, see "id-al-adha" or issue #12
         html = html.replace('{pstlg}', '£')
         html = html.replace('{pcnt}', '%')
+        html = html.replace('{scruple}', '℈') # small unit of measure
         # chemistry stuff
         html = html.replace('{equil}', '⇌')    # equilibrium
         html = html.replace('{b1}', '−')       # single bond (minus sign U+2212)
@@ -321,6 +322,20 @@ class EntryProcessor:
             }
             return bar_map.get(letter, match.group(0))
         html = re.sub(r'\{([^}]+)bar\}', replace_bar, html)
+        def replace_script(match):
+            letter = match.group(1)
+            script_map = {
+                'T': '\U0001D4AF',  'S': '\U0001D4AE',  # 𝒯 𝒮
+                'C': '\U0001D49E',  'E': '\U0001D4A0',  # 𝒞 𝓔
+                'Q': '\U0001D4AC',  'L': '\U0001D4A6',  # 𝒬 𝓛
+                'b': '\U0001D4B7',  'h': '\U0001D4BD',  # 𝒷 𝒽
+                'l': '\U0001D4C1',  'D': '\U0001D49F',  # 𝓁 𝒟
+                'A': '\U0001D49C',  'F': '\U0001D4A1',  # 𝒜 𝓕
+                'M': '\U0001D4A8',  'R': '\U0001D4A5',  # 𝓜 𝓡
+                'U': '\U0001D4B0',  # 𝒰
+            }
+            return script_map.get(letter, match.group(0))
+        html = re.sub(r'\{scr([TSCEQLbhlDAFMRU])\}', replace_script, html)
 
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
         # Handle "Author abbreviation." pattern (like "Francis tr.")
