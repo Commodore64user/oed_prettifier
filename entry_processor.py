@@ -244,6 +244,10 @@ class EntryProcessor:
         html = html.replace('{bbr1}', '−')    # bottom-line right
         html = html.replace('{obigb}', '{')    # large opening curly brackets
         html = html.replace('{cbigb}', '}')    # large closing curly brackets
+        html = html.replace('{obigpren}', '(')    # large opening parens
+        html = html.replace('{cbigpren}', ')')    # large closing parens
+        html = html.replace('{obigsb}', '[')    # large opening square brackets
+        html = html.replace('{cbigsb}', ']')    # large closing square brackets
 
         html = html.replace('{supg}', 'g') # odd one, seems to be just a regular 'g'
         html = html.replace('{ddag}', '‡')
