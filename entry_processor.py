@@ -90,7 +90,7 @@ class EntryProcessor:
         html = re.sub(r'(</div>)(<div class="quotations">)(<i>\([a-z]\)</i>)', r'\1 \2\3', html)
         html = re.sub(r'(</div>)(<div class="quotations">)(<i><abr>[a-zA-Z]+\.</abr></i>)', r'\1 \2\3', html) # weak 2.a
         html = re.sub(r'(</div>)(<div class="quotations">)(<i>[a-zA-Z]+\.?(?:[-\s][a-zA-Z]+\.)?</i>)', r'\1 \2\3', html) # weak 5.a
-        html = re.sub(r'(</div>)(<div class="quotations">)([\u03b1-\u03c9](?:<sup>[0-9]</sup>)? ?<b>)', r'\1 \2\3', html) # greek letters
+        html = re.sub(r'(</div>)(<div class="quotations">)([\u03b1-\u03c9](?:<sup>[0-9]</sup>)? ?\[?<b>)', r'\1 \2\3', html) # greek letters
         html = re.sub(r'(</div>)(<div class="quotations">)(<b>)', r'\1\2 \3', html)
         html = html.replace('</div><div class="quotations">', '')
 
@@ -232,6 +232,7 @@ class EntryProcessor:
         html = html.replace('{aacuced}', '\u00e1') # verified by og quote, see "id-al-adha" or issue #12
         html = html.replace('{pstlg}', '£')
         html = html.replace('{pcnt}', '%')
+        html = html.replace('{arzero}', '\u0660')  # Arabic-Indic zero ٠
         html = html.replace('{scruple}', '℈') # small unit of measure
         # chemistry stuff
         html = html.replace('{equil}', '⇌')    # equilibrium
@@ -340,6 +341,15 @@ class EntryProcessor:
             }
             return script_map.get(letter, match.group(0))
         html = re.sub(r'\{scr([TSCEQLbhlDAFMRU])\}', replace_script, html)
+        def replace_zodiac(match):
+            sign = match.group(1)
+            zodiac_map = {
+                'aries':       '\u2648',  'virgo':       '\u264D',
+                'scorpio':     '\u264F',  'sagit':       '\u2650',
+                'capr':        '\u2651',  'aquar':       '\u2652',
+            }
+            return zodiac_map.get(sign, match.group(0))
+        html = re.sub(r'\{(aries|virgo|scorpio|sagit|capr|aquar)\}', replace_zodiac, html)
 
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
         # Handle "Author abbreviation." pattern (like "Francis tr.")
