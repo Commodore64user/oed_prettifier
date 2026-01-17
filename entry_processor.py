@@ -308,7 +308,7 @@ class EntryProcessor:
                 'ope': '\u025b\u0304',   'revv': '\u028c\u0304',
                 'revr': '\u0279\u0304',   'obar': '\u00f8\u0304',
                 'ahook': 'ą̄̄̄',  'schwa': '\u0259\u0304',
-                # 'shtsyll': '',   'rcircbl': '',
+                'rcircbl': 'r̥̄',     # 'shtsyll': '',
                 'edotbl': 'e\u0323\u0304', 'odotbl': 'o\u0323\u0304',
                 # 'alenis': '', 'ilenis': '', # no clue for either, seems like greek chars used in entries sun and exipotic
                 'ibreve': 'i\u0304\u0306', 'obreve': 'o\u0304\u0306',
@@ -350,6 +350,15 @@ class EntryProcessor:
             }
             return zodiac_map.get(sign, match.group(0))
         html = re.sub(r'\{(aries|virgo|scorpio|sagit|capr|aquar)\}', replace_zodiac, html)
+        def replace_ring_below(match):
+            letter = match.group(1)
+            ring_below_map = {
+                'l': 'l\u0325',  # l̥
+                'm': 'm\u0325',  # m̥
+                'n': 'n\u0325',  # n̥
+            }
+            return ring_below_map.get(letter, match.group(0))
+        html = re.sub(r'\{([lmn])circbl\}', replace_ring_below, html)
 
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
         # Handle "Author abbreviation." pattern (like "Francis tr.")
