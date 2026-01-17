@@ -90,7 +90,7 @@ class EntryProcessor:
         html = re.sub(r'(</div>)(<div class="quotations">)(<i>\([a-z]\)</i>)', r'\1 \2\3', html)
         html = re.sub(r'(</div>)(<div class="quotations">)(<i><abr>[a-zA-Z]+\.</abr></i>)', r'\1 \2\3', html) # weak 2.a
         html = re.sub(r'(</div>)(<div class="quotations">)(<i>[a-zA-Z]+\.?(?:[-\s][a-zA-Z]+\.)?</i>)', r'\1 \2\3', html) # weak 5.a
-        html = re.sub(r'(</div>)(<div class="quotations">)([\u03b1-\u03c9](?:<sup>[0-9]</sup>)? ?\[?<b>)', r'\1 \2\3', html) # greek letters
+        html = re.sub(r'(</div>)(<div class="quotations">)([\u03b1-\u03c9](?:<sup>[0-9]</sup>)? ?\[?<[bi]>)', r'\1 \2\3', html) # greek letters
         html = re.sub(r'(</div>)(<div class="quotations">)(<b>)', r'\1\2 \3', html)
         html = html.replace('</div><div class="quotations">', '')
 
