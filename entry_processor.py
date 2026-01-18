@@ -384,10 +384,14 @@ class EntryProcessor:
         # When wrapping authors earlier on, we may have overshot and captured incorrect strings, here we try to undo those mistakes.
         def fix_author_tr(match):
             content = match.group(0)
-            words_to_move = [' tr.', ' quoted', ' [not', ' [impled', ' [implied', ' in<', ', etc.']
-            prefix_to_move = ['*', '[impled', '[implied', '[see', '―', ' ,']
+            words_to_move = [' tr.', ' quoted', ' [not', ' [impled', ' [implied', ' in<', ', etc.', ' [see']
+            prefix_to_move = ['*', '[impled', '[implied', '[see', '―', ' ,', 'Steel fixer']
 
-            if (any(word in content for word in words_to_move) or any(f'>{prefix}' in content for prefix in prefix_to_move)):
+            has_suffix = any(word in content for word in words_to_move)
+            has_prefix = any(f'>{prefix}' in content for prefix in prefix_to_move)
+            has_trailing_number = bool(re.search(r' \d+[^<]*</span>$', content))
+
+            if has_suffix or has_prefix or has_trailing_number:
                 escaped_words = [re.escape(word) for word in words_to_move]
                 escaped_prefixes = [re.escape(prefix) for prefix in prefix_to_move]
                 suffix_pattern = '|'.join(escaped_words)
@@ -404,10 +408,20 @@ class EntryProcessor:
                     r'<span class="author">\1</span>\2 ',
                     content
                 )
+                # Handle trailing dates/numbers
+                content = re.sub(
+                    r'<span class="author">(.*?)( \d+[^<]*)</span>',
+                    r'<span class="author">\1</span>\2',
+                    content
+                )
                 return content
             return content
         html = re.sub(r'<span class="author">.*?</span>', fix_author_tr, html)
+        # single occurence in entry "crumpet", doing it for Lady Bracknell...
+        html = re.sub(r'<span class="author">(a tender cake of o loof, spreynde with oile, paast sodun)</span>', r'\1', html)
 
+        html = re.sub(r'<span class="author">in</span>', 'in', html)
+        html = re.sub(r'(<span class="author">)(\? )(.*?)(</span>)', r'\2\1\3\4', html)
         html = re.sub(r'<span class="translator">tr.</span>', '<abr>tr.</abr>', html)
         html = html.replace('<abr>', '<span class="abbreviation">')
         html = html.replace('</abr>', '</span>')
