@@ -359,17 +359,17 @@ class EntryProcessor:
             }
             return ring_below_map.get(letter, match.group(0))
         html = re.sub(r'\{([lmn])circbl\}', replace_ring_below, html)
-        # Absolutely no clue, whether this is correct or not.
+        # Absolutely no clue, whether this is correct or not. i am cheating here and using help from AI
         def replace_arabic(match):
             letter = match.group(1)
             arabic_map = {
-                'dal':      '\u062F',  'alif':     '\uFE8D',  # د ﺍ
+                'dal':      '\u062F',  'alif':     '\u0627',  # د ا
                 'Ha':       '\u062D',  'nun':      '\uFEED',  # ح ﻧ
-                'ta':       '\uFE95',  'tha':      '\uFE99',  # ﺕ ﺙ
-                'ba':       '\uFE8F',  'yafull':   '\uFEEF',  # ﺏ ﻳ
+                'ta':       '\uFE97',  'tha':      '\uFE9B',  # ﺗ ﺛ
+                'ba':       '\uFE91',  'yafull':   '\uFEEF',  # ﺑ ﻳ
                 'pa':       '\uFB56',  'ha':       '\u0647',  # ﭘ ه
                 'waw':      '\u0648',  'ya':       '\u06CC',  # و ی
-                'Dadfull':  '\u0636',  'nunfull':  '\uFEED',  # ض ﻧ
+                'Dadfull':  '\u0636',  'nunfull':  '\u0646',  # ض ن
             }
             return arabic_map.get(letter, match.group(0))
         html = re.sub(r'\{ar([a-zA-Z]+)\}', replace_arabic, html)
