@@ -380,10 +380,31 @@ class EntryProcessor:
         # Finally, convert the placeholder back
         html = re.sub(r'<ANON_IN_SOURCE>', '', html)
         html = re.sub(r'</ANON_IN_SOURCE>', '', html)
+
+        # When wrapping authors earlier on, we may have overshot and captured incorrect strings, here we try to undo those mistakes.
         def fix_author_tr(match):
             content = match.group(0)
-            if ' tr.' in content:
-                return re.sub(r'<span class="author">(.*?) (tr\.(?:\s)*)</span>', r'<span class="author">\1</span> \2', content)
+            words_to_move = [' tr.', ' quoted', ' [not', ' [impled', ' [implied', ' in<', ', etc.']
+            prefix_to_move = ['*', '[impled', '[implied', '[see', '―', ' ,']
+
+            if (any(word in content for word in words_to_move) or any(f'>{prefix}' in content for prefix in prefix_to_move)):
+                escaped_words = [re.escape(word) for word in words_to_move]
+                escaped_prefixes = [re.escape(prefix) for prefix in prefix_to_move]
+                suffix_pattern = '|'.join(escaped_words)
+                prefix_pattern = '|'.join(escaped_prefixes)
+                # Handle prefixes - remove span entirely
+                content = re.sub(
+                    rf'<span class="author">({prefix_pattern})(.*?)</span>',
+                    r'\1\2',
+                    content
+                )
+                # Handle suffixes - move stuff out of the span
+                content = re.sub(
+                    rf'<span class="author">(.*?)({suffix_pattern})\s*</span>',
+                    r'<span class="author">\1</span>\2 ',
+                    content
+                )
+                return content
             return content
         html = re.sub(r'<span class="author">.*?</span>', fix_author_tr, html)
 
