@@ -359,6 +359,20 @@ class EntryProcessor:
             }
             return ring_below_map.get(letter, match.group(0))
         html = re.sub(r'\{([lmn])circbl\}', replace_ring_below, html)
+        # Absolutely no clue, whether this is correct or not.
+        def replace_arabic(match):
+            letter = match.group(1)
+            arabic_map = {
+                'dal':      '\u062F',  'alif':     '\uFE8D',  # د ﺍ
+                'Ha':       '\u062D',  'nun':      '\uFEED',  # ح ﻧ
+                'ta':       '\uFE95',  'tha':      '\uFE99',  # ﺕ ﺙ
+                'ba':       '\uFE8F',  'yafull':   '\uFEEF',  # ﺏ ﻳ
+                'pa':       '\uFB56',  'ha':       '\u0647',  # ﭘ ه
+                'waw':      '\u0648',  'ya':       '\u06CC',  # و ی
+                'Dadfull':  '\u0636',  'nunfull':  '\uFEED',  # ض ﻧ
+            }
+            return arabic_map.get(letter, match.group(0))
+        html = re.sub(r'\{ar([a-zA-Z]+)\}', replace_arabic, html)
 
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
         # Handle "Author abbreviation." pattern (like "Francis tr.")
