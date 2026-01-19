@@ -252,15 +252,56 @@ class EntryProcessor:
 
         html = html.replace('{supg}', 'g') # odd one, seems to be just a regular 'g'
         html = html.replace('{ddag}', '‡')
+        html = html.replace('{quaver}', '\u266A')      # ♪
+        html = html.replace('{squaver}', '\u266C')  # ♬ unicode does not seem to have a single semiquaver... OED shows [squaver] in entry 'hook'
+        html = html.replace('{semibr}', '\U0001D15D')
         html = html.replace('{ruasper}', 'u\u0314') # u̔
         html = html.replace('{roasper}', 'o\u0314') # o̓
         html = html.replace('{nfasper}', '\u0314')
         html = html.replace('{egyasper}', '[egyasper]') # still needs revision, same as following line
         html = html.replace('{ormg}', '[ormg]') # OED shows it like this, hard to tell what it actually is at the moment. tracked in #12
         html = html.replace('{wlenisisub}', 'ᾠ')
-        html = html.replace('{nfacu}', '´')
+        # html = html.replace('{nfacu}', '´')
         html = html.replace('{nfgra}', 'ˋ')
         html = html.replace('{nfcirc}', 'ˆ')
+        def replace_acute(match):
+            letter = match.group(1)
+            acute_map = {
+                'nf':              '´',        # ´ (acute accent alone)
+                'y':               '\u00FD',   # ý
+                'i':               '\u00ED',   # í
+                'u':               '\u00FA',   # ú
+                # 't':               '???',      # t with acute?
+                'g':               '\u01F5',   # ǵ
+                'n':               '\u0144',   # ń
+                'w':               '\u1E83',   # ẃ
+                'r':               '\u0155',   # ŕ
+                'z':               '\u017A',   # ź
+                'E':               '\u00C9',   # É
+                'A':               '\u00C1',   # Á
+                'O':               '\u00D3',   # Ó
+                # 'giuml':           '???',      # g with umlaut + acute?
+                # 'amac':            '???',      # a with macron + acute?
+                # 'wisub':           '???',      # w with subscript?
+                # 'uuml':            '\u01D8',   # ǘ (u with umlaut + acute)
+                # 'aisub':           '???',      # a with subscript?
+                # 'alenissub':       '???',      # a lenis with subscript?
+                # 'euml':            '???',      # e with umlaut + acute?
+                # 'eundl':           '???',      # e with underline?
+                # 'imac':            '???',      # i with macron + acute?
+                # 'hisub':           '???',      # h with subscript?
+                # 'ilenismac':       '???',      # i lenis with macron?
+                # 'Uleniscac':       '???',      # U lenis with caron?
+                # 'ymac':            '???',      # y with macron + acute?
+                # 'omac':            '???',      # o with macron + acute?
+                # 'edotab':          '???',      # e with dot above?
+                # 'mdotbl':          '???',      # m with dot below?
+                # 'umac':            '???',      # u with macron + acute?
+                # 'guuml':           '???',      # g with umlaut?
+                # 'rdotbl':          '???',      # r with dot below?
+            }
+            return acute_map.get(letter, match.group(0))
+        html = re.sub(r'\{([^}]+)acu\}', replace_acute, html)
         def replace_cedilla(match):
             letter = match.group(1)
             cedilla_map = {
@@ -399,7 +440,7 @@ class EntryProcessor:
         def fix_author_tr(match):
             content = match.group(0)
             words_to_move = [' tr.', ' quoted', ' [not', ' [impled', ' [implied', ' in<', ', etc.', ' [see']
-            prefix_to_move = ['*', '[impled', '[implied', '[see', '―', ' ,', 'Steel fixer']
+            prefix_to_move = ['*', '[impled', '[implied', '[see', '―', ' ,', 'Steel fixer', ': implied']
 
             has_suffix = any(word in content for word in words_to_move)
             has_prefix = any(f'>{prefix}' in content for prefix in prefix_to_move)
@@ -439,5 +480,8 @@ class EntryProcessor:
         html = re.sub(r'<span class="translator">tr.</span>', '<abr>tr.</abr>', html)
         html = html.replace('<abr>', '<span class="abbreviation">')
         html = html.replace('</abr>', '</span>')
+
+        # this final step is for testing purposes only, to make spotting these much easier
+        html = re.sub(r'\{([^\s{}]+)\}', r'<span class="unprocessed">{\1}</span>', html)
 
         return html
