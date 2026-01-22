@@ -232,6 +232,10 @@ class EntryProcessor:
         html = html.replace('{aacuced}', '\u00e1') # verified by og quote, see "id-al-adha" or issue #12
         html = html.replace('{pstlg}', '£')
         html = html.replace('{pcnt}', '%')
+        html = html.replace('{cprt}', '©') # copyright
+        html = html.replace('{hash}', '#')
+        html = html.replace('{cross}', '✠')
+        html = html.replace('{revsc}', '\u061B') # reverse semi-colon
         html = html.replace('{arzero}', '\u0660')  # Arabic-Indic zero ٠
         html = html.replace('{scruple}', '℈') # small unit of measure
         # chemistry stuff
@@ -259,8 +263,11 @@ class EntryProcessor:
         html = html.replace('{ruasper}', 'u\u0314') # u̔
         html = html.replace('{roasper}', 'o\u0314') # o̓
         html = html.replace('{nfasper}', '\u0314')
+        # these following ones, require being checked on a printed edition of the OED
         html = html.replace('{egyasper}', '[egyasper]') # still needs revision, same as following line
         html = html.replace('{ormg}', '[ormg]') # OED shows it like this, hard to tell what it actually is at the moment. tracked in #12
+        html = html.replace('{blb}', '[blb]') # there is no unicode, OED requires special font, shown as ""
+
         html = html.replace('{wlenisisub}', 'ᾠ')
         html = html.replace('{nfgra}', 'ˋ')
         html = html.replace('{nfcirc}', 'ˆ')
