@@ -107,6 +107,9 @@ class SynonymExtractor:
             parent_block = marker.find_parent('blockquote')
             if parent_block:
                 strict_blocks.add(parent_block)
+
+        strict_blocks.update(soup.find_all('blockquote', class_='usage-note'))
+
         if lax_tags and pos_blocks:
             strict_blocks.discard(pos_blocks[0])
 
