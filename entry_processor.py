@@ -235,6 +235,7 @@ class EntryProcessor:
         html = html.replace('{arzero}', '\u0660')  # Arabic-Indic zero ٠
         html = html.replace('{scruple}', '℈') # small unit of measure
         # chemistry stuff
+        html = html.replace('{pm}', '±')    # plus or minus
         html = html.replace('{equil}', '⇌')    # equilibrium
         html = html.replace('{b1}', '−')       # single bond (minus sign U+2212)
         html = html.replace('{b2}', '=')       # double bond (equals sign U+003D)
@@ -261,7 +262,6 @@ class EntryProcessor:
         html = html.replace('{egyasper}', '[egyasper]') # still needs revision, same as following line
         html = html.replace('{ormg}', '[ormg]') # OED shows it like this, hard to tell what it actually is at the moment. tracked in #12
         html = html.replace('{wlenisisub}', 'ᾠ')
-        # html = html.replace('{nfacu}', '´')
         html = html.replace('{nfgra}', 'ˋ')
         html = html.replace('{nfcirc}', 'ˆ')
         def replace_acute(match):
@@ -426,6 +426,8 @@ class EntryProcessor:
         )
         # handle authors with abbreviated names.
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) (<abr>[\w]+\.</abr>)\s([0-9]+)', r'\1 <span class="author">\2</span> \3', html)
+        # matches the following pattern: "<b>1855</b> <abr">Geo.</abr> Eliot in"
+        html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) (<abr>[\w]+\.</abr>)\s([\w]+)\s(in)', r'\1 <span class="author">\2 \3</span> \4', html)
         # This grew out of control, but is seems to be held together by fairy dust, it works although this should have been done in a more structured way.
         html = re.sub(
             r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) ([^<]*)?<abr>([\w]+\.)</abr>\s([\w]+)?\s?((<i>)?[0-9]?\s?)(<i>|<abr>)',
