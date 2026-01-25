@@ -13,10 +13,24 @@ def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
     metrics = {'dotted_words': 1, 'dot_corrected': 0}
     if word == "Prov.":
         definition = "<br/>proverb, (in the Bible) Proverbs"
+        metrics['dot_corrected'] = 1
     elif word == "Div.":
         definition = "<br/>division, divinity"
+        metrics['dot_corrected'] = 1
     elif word == ". s. d.":
         word = "l. s. d."
+    elif word == "N.": # broken entry, two entries mixed
+        # The first part is fixed text. The second part is a merged entry for "No."
+        # We fix the first part and drop the second part.
+        definition = "<br/>Norse; north; northern"
+        metrics['dot_corrected'] = 1
+    elif word == "No.":
+        # The entry is contaminated, drop the messy start
+        start_marker = "<b><abr>No.</abr>"
+        start_idx = definition.find(start_marker)
+        if start_idx != -1:
+            definition = definition[start_idx:]
+            metrics['dot_corrected'] = 1
 
     # For some bizarre and unbeknown reason, these abbreviation entries have their definition duplicated
     # so we will have to verify if it is the case (it is!) and clean it up. After that we will add a synonym

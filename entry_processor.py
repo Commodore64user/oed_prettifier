@@ -56,7 +56,10 @@ class EntryProcessor:
                     blockquote_node.wrap(wrapper_div)
                     break
 
-        return str(soup)
+        # BeautifulSoup with lxml automatically adds <html> and <body> tags to partial fragments.
+        # We must strip these out to return just the modified HTML content. Otherwise processing_worker
+        # will have a hard time detecting proper headwords (e.g., entry 'it')
+        return str(soup).replace('<html><body>', '').replace('</body></html>', '')
 
     def process(self) -> str:
         """Runs the full suite of cleaning and formatting operations on the HTML."""
@@ -257,6 +260,7 @@ class EntryProcessor:
 
         html = html.replace('{supg}', 'g') # odd one, seems to be just a regular 'g'
         html = html.replace('{ddag}', '‡')
+        html = html.replace('{repetn}', ':||:')      # repetition, musical notation (Morley 1597)
         html = html.replace('{quaver}', '\u266A')      # ♪
         html = html.replace('{squaver}', '\u266C')  # ♬ unicode does not seem to have a single semiquaver... OED shows [squaver] in entry 'hook'
         html = html.replace('{semibr}', '\U0001D15D')
@@ -268,6 +272,7 @@ class EntryProcessor:
         html = html.replace('{ormg}', '[ormg]') # OED shows it like this, hard to tell what it actually is at the moment. tracked in #12
         html = html.replace('{blb}', '[blb]') # there is no unicode, OED requires special font, shown as ""
 
+        html = html.replace('{Tse}', 'Ц') # cyrillic
         html = html.replace('{wlenisisub}', 'ᾠ')
         html = html.replace('{nfgra}', 'ˋ')
         html = html.replace('{nfcirc}', 'ˆ')
