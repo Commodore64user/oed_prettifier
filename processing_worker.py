@@ -11,6 +11,16 @@ def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
     # Some of these seem to be legitimate entries, whilst others seem to have been added by a previous "editor"
     # I'm choosing to preserve them but we need to handle some quirks.
     metrics = {'dotted_words': 1, 'dot_corrected': 0}
+
+    # Detect merged entries that are stuck together (e.g. N. / No.)
+    # These look like <dtrn>...</dtrn>\n<b>...
+    # We search for this pattern and inject a separator to force a split in the worker.
+    if '</dtrn>\\n<b>' in definition:
+        separator = '<b><span style="color:#8B008B">▪ <span>II.</span></span></b>'
+        definition = definition.replace('</dtrn>\\n<b>', f'</dtrn>{separator}<b')
+        metrics['dot_corrected'] = 1
+        metrics['auto_split_merged'] = True
+
     if word == "Prov.":
         definition = "<br/>proverb, (in the Bible) Proverbs"
         metrics['dot_corrected'] = 1
@@ -19,18 +29,6 @@ def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
         metrics['dot_corrected'] = 1
     elif word == ". s. d.":
         word = "l. s. d."
-    elif word == "N.": # broken entry, two entries mixed
-        # The first part is fixed text. The second part is a merged entry for "No."
-        # We fix the first part and drop the second part.
-        definition = "<br/>Norse; north; northern"
-        metrics['dot_corrected'] = 1
-    elif word == "No.":
-        # The entry is contaminated, drop the messy start
-        start_marker = "<b><abr>No.</abr>"
-        start_idx = definition.find(start_marker)
-        if start_idx != -1:
-            definition = definition[start_idx:]
-            metrics['dot_corrected'] = 1
 
     # For some bizarre and unbeknown reason, these abbreviation entries have their definition duplicated
     # so we will have to verify if it is the case (it is!) and clean it up. After that we will add a synonym
@@ -92,7 +90,35 @@ def process_entry_line_worker(line_tuple: tuple[str, bool, set[str] | None]) -> 
         split_parts = HOMOGRAPH_PATTERN.split(definition)
         processed_results = []
 
-        if len(split_parts) > 1:
+        # This is a particular case we introduced in _handle_dotted_word_quirks()
+        # Here we handle these amalgamated entries.
+        if metrics.get('auto_split_merged'):
+            metrics['split_entry'] = 1
+            for idx, part in enumerate(split_parts):
+                if not part.strip():
+                    continue
+
+                # Remove the separator pattern we injected so it doesn't appear in the output
+                part = re.sub(CORE_HOMOGRAPH_PATTERN, '', part)
+
+                processor = EntryProcessor(part, word)
+                processed_part = processor.process()
+
+                if idx == 0:
+                    # First part: Add headword manually (it was the part before the merged entry)
+                    headword_b_tag = f'<span class="headword"><b>{word}</b></span><br/>'
+                    final_definition = headword_b_tag + processed_part
+                else:
+                    # Second part: Wrap the existing headword (it starts with <b>...</b>)
+                    final_definition = re.sub(r'<b>(.*?)</b>', r'<span class="headword"><b>\1</b></span>', processed_part, count=1)
+                    # Clean up trailing dtrn tags that can pollute the end of the second merged entry
+                    final_definition = re.sub(r'<dtrn>.*?</dtrn>$', '', final_definition)
+
+                final_entry = finalise_entry(entry_word_base, final_definition, add_syns, debug_words)
+                processed_results.append(final_entry)
+                metrics['synonyms_added'] += final_entry['syn_count']
+        # This is the primary case, we are splitting homographs
+        elif len(split_parts) > 1:
             metrics['split_entry'] = 1
             for part in split_parts:
                 if part.strip():
