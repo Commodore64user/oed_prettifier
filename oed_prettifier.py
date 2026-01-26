@@ -13,12 +13,13 @@ from concurrent.futures import as_completed
 
 class DictionaryConverter:
     """Orchestrates the conversion from a TSV file to a Stardict dictionary."""
-    def __init__(self, input_tsv: Path, output_ifo: str, add_syns: bool, workers: int | None, debug_words: list[str] | None):
+    def __init__(self, input_tsv: Path, output_ifo: str, add_syns: bool, workers: int | None, debug_words: list[str] | None, dump_html: bool):
         if not input_tsv.is_file():
             sys.exit(f"Error: Input TSV file not found at '{input_tsv}'")
         self.input_tsv = input_tsv
         self.output_ifo_name = output_ifo
         self.add_syns = add_syns
+        self.dump_html = dump_html
         self.debug_words = set(debug_words) if debug_words else None
 
         if self.debug_words:
@@ -98,6 +99,9 @@ class DictionaryConverter:
                         result = future.result()
                         if result['status'] == 'ok':
                             for res in result['results']:
+                                if self.dump_html and self.debug_words:
+                                    print(f"\n\n--> HTML Dump for '{res['words'][0]}':\n{res['definition']}\n")
+
                                 self._create_entry(res['words'], res['definition'])
                                 self.unique_headwords.add(res['words'][0])
 
@@ -260,7 +264,8 @@ if __name__ == "__main__":
     parser.add_argument("--add-syns", action="store_true", help="Scan HTML for b-tags and add their cleaned content as synonyms for the entry.")
     parser.add_argument("--workers", type=int, default=None, help="Number of worker processes to use. Defaults to the number of system cores minus one.")
     parser.add_argument("--debug", nargs='+', help="Run the script only for the specified headword(s) to speed up testing.")
+    parser.add_argument("-d", "--dump", action="store_true", help="When used with --debug, prints the final HTML of the processed entry to the console.")
     args = parser.parse_args()
 
-    converter = DictionaryConverter(args.input_tsv, args.output_ifo, args.add_syns, args.workers, args.debug)
+    converter = DictionaryConverter(args.input_tsv, args.output_ifo, args.add_syns, args.workers, args.debug, args.dump)
     converter.run()
