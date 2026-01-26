@@ -77,6 +77,9 @@ class EntryProcessor:
 
         html = html.replace('<blockquote><ex>', '<div class="quotations">')
         html = html.replace('</ex></blockquote>', '</div>')
+        # Fix for cases where etymology bracket appears at the end of a quotation block (e.g. entry 'jefe')
+        # We must close the quotations div explicitly here so the bracket remains part of the outer etymology structure
+        html = html.replace('</ex>]</blockquote>', '</div>]</blockquote>')
 
         html = re.sub(r'(<abr>†</abr>)\s', r'\1', html)
         html = re.sub(r'(<abr>¶</abr>)\s', r'\1', html)
