@@ -33,7 +33,11 @@ blockquote {
 blockquote.etymology-notes {
     margin-left: 0.5em;
 }
-
+/* Prevent double shrinking when quotations are inside etymology */
+.etymology .quotations {
+    font-size: 1em;
+    background-color: #FFFBE6 !important;
+}
 .usage-note {
     /* background-color: #ff00bf; */
     margin: 0 0 0 0.5em;
