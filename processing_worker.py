@@ -5,21 +5,13 @@ from synonym_extractor import SynonymExtractor
 # This pattern was moved here from the main class to make the worker self-contained.
 CORE_HOMOGRAPH_PATTERN = r'(?:<b><span style="color:#8B008B">▪ <span>(?:[IVXL]+\.)</span></span></b>)'
 HOMOGRAPH_PATTERN = re.compile(f'(?={CORE_HOMOGRAPH_PATTERN})')
+PROBLEMATIC_ABBREVIATIONS = ["Ed.", "Gov.", "mod.", "MS.", "viz.", "prob.", "Pol. Econ.", "Oxon."]
 
 def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
     """Handles special logic for words ending in full stops or symbols."""
     # Some of these seem to be legitimate entries, whilst others seem to have been added by a previous "editor"
     # I'm choosing to preserve them but we need to handle some quirks.
     metrics = {'dotted_words': 1, 'dot_corrected': 0}
-
-    # Detect merged entries that are stuck together (e.g. N. / No.)
-    # These look like <dtrn>...</dtrn>\n<b>...
-    # We search for this pattern and inject a separator to force a split in the worker.
-    if '</dtrn>\\n<b>' in definition:
-        separator = '<b><span style="color:#8B008B">▪ <span>II.</span></span></b>'
-        definition = definition.replace('</dtrn>\\n<b>', f'</dtrn>{separator}<b')
-        metrics['dot_corrected'] = 1
-        metrics['auto_split_merged'] = True
 
     if word == "Prov.":
         definition = "<br/>proverb, (in the Bible) Proverbs"
@@ -29,6 +21,19 @@ def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
         metrics['dot_corrected'] = 1
     elif word == ". s. d.":
         word = "l. s. d."
+    elif word in PROBLEMATIC_ABBREVIATIONS:
+        definition = re.sub(r'<dtrn>.*?</dtrn>(\\n)?', '', definition, flags=re.DOTALL)
+        metrics['dot_corrected'] = 1
+
+    # Detect merged entries that are stuck together (e.g. N. / No.)
+    # These look like <dtrn>...</dtrn>\n<b...
+    # We search for this pattern and inject a separator to force a split in the worker.
+    if '</dtrn>\\n<b' in definition:
+        separator = '<b><span style="color:#8B008B">▪ <span>II.</span></span></b>'
+        definition = re.sub(r'(<dtrn>.*?</dtrn>)\\n<dtrn>(.*?)</dtrn>\\n', r'\1\\n', definition)
+        definition = definition.replace('</dtrn>\\n<b', f'</dtrn>{separator}<b')
+        metrics['dot_corrected'] = 1
+        metrics['auto_split_merged'] = True
 
     # For some bizarre and unbeknown reason, these abbreviation entries have their definition duplicated
     # so we will have to verify if it is the case (it is!) and clean it up. After that we will add a synonym
@@ -144,7 +149,7 @@ def process_entry_line_worker(line_tuple: tuple[str, bool, set[str] | None]) -> 
             final_definition = headword_div + processed_definition
 
             if re.search(
-                r'<span class="headword"><b>(.*?)</b></span>(<blockquote>)?<b>(<span class="abbreviation">[‖¶†]</span>\s)?[\w\u00C0-\u017F\u0180-\u024F\u02C8\' &\-\.]',
+                r'<span class="headword"><b>(.*?)</b></span>\s*(<blockquote>)?<b>(<span class="abbreviation">[‖¶†]</span>\s)?[\w\u00C0-\u017F\u0180-\u024F\u02C8\' &\-\.]',
                 final_definition): # \u02C8 is ˈ
                 # If the headword was already present, we don't need to prepend it, so remove it.
                 # Seems backwards to do it this way but it is much safer.
