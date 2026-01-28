@@ -16,6 +16,9 @@ blockquote {
     font-style: italic;
     font-size: 0.9em;
 }
+.phonetic .abbreviation {
+    color: #000000 !important;
+}
 .forms {
     font-size: 0.85em;
     /* color: rgb(0, 255, 255); /* for testing purposes */
@@ -37,6 +40,8 @@ blockquote.etymology-notes {
 .etymology .quotations {
     font-size: 1em;
     background-color: #FFFBE6 !important;
+    margin: 0em 0.5em 0em 1em; /* top right bottom left */
+    padding: 0em;
 }
 .usage-note {
     /* background-color: #ff00bf; */
