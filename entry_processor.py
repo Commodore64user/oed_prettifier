@@ -67,6 +67,7 @@ class EntryProcessor:
         html = re.sub(r'<img[^>]+>', '', html)
         html = re.sub(r'\\n', ' ', html)
         html = re.sub(r'\\t', ' ', html)
+        html = re.sub(r'(</b>|/)(\[)', r'\1 \2', html)
         if self.headword.endswith('.'):
             html = html.replace('<abr>', '', 1)
             html = html.replace('</abr>', '', 1)
@@ -85,6 +86,7 @@ class EntryProcessor:
         html = re.sub(r'(<abr>¶</abr>)\s', r'\1', html)
         html = re.sub(r'<kref>(.*?)</kref>', r'<span class="kref">\1</span>', html)
         html = html.replace('<abr>=</abr>', '<span class="same-as">=</span>')
+        html = re.sub(r'<b>(<i>(?:Affix|Derivatives|Compounds)\.</i>)</b>', r'\1', html)
         # This is a liberty I've taken, which will capture some false positives (relative to the original OED text, see entry "them" section II. 4),
         # but as it is a very common pattern, it will be useful to have it regardless.
         html = re.sub(r'(<span class="same-as">=</span>)\s+([a-zA-Z]+)', r'\1 <span class="kref">\2</span>', html)
@@ -140,32 +142,48 @@ class EntryProcessor:
         # )
 
         # Replace the start of the etymology block, but only the first occurrence, just in case.
+        # We need to track WHERE this replacement happened to know where to start searching for the end.
+        # otherwise we might end up closing before the etymology actually starts (happened to entry 'Islamo-')
+        etymology_start_marker = '<div class="etymology"><blockquote><span class="etymology-main">['
         html = re.sub(
             r'<blockquote><span style="color:#808080">\[',
-            '<div class="etymology"><blockquote><span class="etymology-main">[',
+            etymology_start_marker,
             html,
             count=1
         )
-        # Then let's try finding the correct closing tag for the etymology block. stop_pos is a point at which it will for sure have closed.
-        stop_pos = html.find('<b><span style="color:#4B0082">')
-        search_text = html[:stop_pos] if stop_pos != -1 else html
-        result, count = re.subn(r'\](</span>)</blockquote>', ']</span></blockquote></div> ', search_text, count=1)
-        if count == 0:
-            result = re.sub(r'\]</blockquote>', ']</blockquote></div> ', result, count=1)
-        html = result + (html[stop_pos:] if stop_pos != -1 else '')
-        # Not quite done yet, now add class to all other blockquotes inside the etymology block.
-        def process_etymology(match):
-            block = match.group(1)
-            # Add indent class to all blockquotes
-            block = re.sub(r'(</blockquote>)<blockquote>', r'\1<blockquote class="etymology-notes">', block)
-            return f'<div class="etymology">{block}</div>'
-        html = re.sub(r'<div class="etymology">(.*?)</div>', process_etymology, html, flags=re.S)
+        # Locate the start of the etymology section we just created
+        ety_start_idx = html.find(etymology_start_marker)
+        if ety_start_idx != -1:
+            # Then let's try finding the correct closing tag for the etymology block. stop_pos is a point at which it will for sure have closed.
+            # We search starting from our current position to ensure we don't find a marker from a previous section.
+            stop_pos = html.find('<b><span style="color:#4B0082">', ety_start_idx)
+
+            # From the start of the etymology block -> to the stop_pos (or end of string)
+            search_start = ety_start_idx
+            search_end = stop_pos if stop_pos != -1 else len(html)
+
+            target_segment = html[search_start:search_end]
+            # Apply replacements only to this target segment
+            result, count = re.subn(r'\](</span>)\s*</blockquote>', ']</span></blockquote></div> ', target_segment, count=1)
+            if count == 0:
+                result = re.sub(r'\]\s*</blockquote>', ']</blockquote></div> ', target_segment, count=1)
+            # We add the notes class to all blockquotes inside this etymology block.
+            result = re.sub(r'(</blockquote>)<blockquote>', r'\1<blockquote class="etymology-notes">', result)
+
+            # Reassemble the HTML: Pre-segment + Processed Segment + Post-segment
+            html = html[:search_start] + result + html[search_end:]
+
+        # Earlier we left the extra closing blockquote so it could be found through the previos etymology bit,
+        # we now remove it, so we don't have a single lingering closing tag. (see 'jefe')
+        html = re.sub(r'(</div>)(\])</blockquote>(</div>)', r'\2\1\3', html)
+        # some newer entries (like 'anime'), have a sligtly different pattern than </ex></blockquote>
+        html = re.sub(r'</ex>(.*?)</blockquote>', r'</div> <blockquote class="etymology-notes">\1</blockquote> ', html)
 
         # Heuristic approach to wrap in the forms section. note: there are multiple variations here so other forms sections found deep
         # into an entry might not be captured. HELP WANTED #fixme.
         html = re.sub(r'<blockquote>(Forms:?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(?:<i>)?(Compared.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-        html = re.sub(r'<blockquote>(Also [0-9].*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
+        html = re.sub(r'<blockquote>(Also (?:[0-9])?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(<abr>Pa.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Past and <abr>pple.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Pl. <b>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
@@ -212,6 +230,7 @@ class EntryProcessor:
         html = html.replace('</blockquote><blockquote>', '</blockquote><blockquote class="usage-note">')
         html = re.sub(r'(</blockquote></div>)(<blockquote><b><span class="major-division">)', r'\1 \2', html)
         html = html.replace('</blockquote></div><blockquote>', '</blockquote></div><blockquote class="usage-note">')
+        html = re.sub(r'(<blockquote class=")usage-note("><i><abr>)', r'\1phonetic\2', html)
 
         # see "them"'s etymology.
         def replace_acute(match):
