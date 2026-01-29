@@ -86,6 +86,7 @@ class EntryProcessor:
         html = re.sub(r'(<abr>¶</abr>)\s', r'\1', html)
         html = re.sub(r'<kref>(.*?)</kref>', r'<span class="kref">\1</span>', html)
         html = html.replace('<abr>=</abr>', '<span class="same-as">=</span>')
+        html = re.sub(r'(<dtrn>(.*?)</dtrn>)\s*<dtrn>(.*?)</dtrn>', r' <br/>\1', html)
         html = re.sub(r'<b>(<i>(?:Affix|Derivatives|Compounds)\.</i>)</b>', r'\1', html)
         # This is a liberty I've taken, which will capture some false positives (relative to the original OED text, see entry "them" section II. 4),
         # but as it is a very common pattern, it will be useful to have it regardless.

@@ -6,6 +6,8 @@ from synonym_extractor import SynonymExtractor
 CORE_HOMOGRAPH_PATTERN = r'(?:<b><span style="color:#8B008B">▪ <span>(?:[IVXL]+\.)</span></span></b>)'
 HOMOGRAPH_PATTERN = re.compile(f'(?={CORE_HOMOGRAPH_PATTERN})')
 PROBLEMATIC_ABBREVIATIONS = ["Ed.", "Gov.", "mod.", "MS.", "viz.", "prob.", "Pol. Econ.", "Oxon."]
+# Words with <dtrn> sandwich pattern but no trailing punctuation.
+PROBLEMATIC_DTRN_WORDS = ['H', 'John', 'Timon']
 
 def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
     """Handles special logic for words ending in full stops or symbols."""
@@ -88,7 +90,7 @@ def process_entry_line_worker(line_tuple: tuple[str, bool, set[str] | None]) -> 
         metrics = {'source_entry': 1, 'split_entry': 0, 'dotted_words': 0, 'dot_corrected': 0, 'synonyms_added': 0}
 
         entry_word_base = word
-        if word.endswith(('.', '‖', '¶', '†')):
+        if word.endswith(('.', '‖', '¶', '†')) or word in PROBLEMATIC_DTRN_WORDS:
             entry_word_base, definition, dot_metrics = _handle_dotted_word_quirks(word, definition)
             metrics.update(dot_metrics)
 
@@ -112,6 +114,9 @@ def process_entry_line_worker(line_tuple: tuple[str, bool, set[str] | None]) -> 
                 if idx == 0:
                     # First part: Add headword manually (it was the part before the merged entry)
                     headword_b_tag = f'<span class="headword"><b>{word}</b></span><br/>'
+                    final_definition = headword_b_tag + processed_part
+                elif word in PROBLEMATIC_DTRN_WORDS and word != 'Timon':
+                    headword_b_tag = f'<span class="headword"><b>{word}</b></span> '
                     final_definition = headword_b_tag + processed_part
                 else:
                     # Second part: Wrap the existing headword (it starts with <b>...</b>)
