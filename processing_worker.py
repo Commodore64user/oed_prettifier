@@ -154,7 +154,7 @@ def process_entry_line_worker(line_tuple: tuple[str, bool, set[str] | None]) -> 
             final_definition = headword_div + processed_definition
 
             if re.search(
-                r'<span class="headword"><b>(.*?)</b></span>\s*(<blockquote>)?<b>(<span class="abbreviation">[‖¶†]</span>\s)?[\w\u00C0-\u017F\u0180-\u024F\u02C8\' &\-\.]',
+                r'<span class="headword"><b>(.*?)</b></span>\s*(<blockquote>)?<b>(<span class="abbreviation">[‖¶†]</span>\s)?[\w\u00C0-\u017F\u0180-\u024F\u02C8\' &\-\.\(]',
                 final_definition): # \u02C8 is ˈ
                 # If the headword was already present, we don't need to prepend it, so remove it.
                 # Seems backwards to do it this way but it is much safer.
