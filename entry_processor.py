@@ -299,6 +299,19 @@ class EntryProcessor:
         html = html.replace('{wlenisisub}', 'ᾠ')
         html = html.replace('{nfgra}', 'ˋ')
         html = html.replace('{nfcirc}', 'ˆ')
+        def format_fraction(match):
+            key = match.group(1)
+            fraction_map = {
+                'sixon8': '6/8', 'sixon4': '6/4', 'sixon2': '6/2',
+                'threeon4': '3/4', 'threeon2': '3/2', 'threeon8': '3/8',
+                'threeon16': '3/16', 'twoon4': '2/4', 'oneon4': '1/4',
+                'oneon3': '1/3',
+            }
+            if key in fraction_map:
+                num, denom = fraction_map[key].split('/')
+                return f'<sup>{num}</sup>/<sub>{denom}</sub>'
+            return match.group(0)
+        html = re.sub(r'\{(\w+on\d+)\}', format_fraction, html)
         def replace_acute(match):
             letter = match.group(1)
             acute_map = {
