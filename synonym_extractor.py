@@ -26,7 +26,7 @@ class SynonymExtractor:
     def _prepare_and_validate_synonym(headword: str, word_initial: str, final_synonym: str) -> str | None:
         if not final_synonym or final_synonym in SynonymExtractor.IGNORED_SYN_WORDS:
             return None
-        if final_synonym.startswith('-') or final_synonym.endswith('-'):
+        if (not headword.startswith('-') and final_synonym.startswith('-')) or final_synonym.endswith('-'):
             return None
         if re.search(r'\d{2,}', final_synonym):
             return None
@@ -46,6 +46,8 @@ class SynonymExtractor:
         if final_synonym.endswith('..'):
             final_synonym = final_synonym.rstrip('.')
         if '..' in final_synonym:
+            return None
+        if final_synonym.startswith('―') or final_synonym.startswith(','):
             return None
         # some entries (e.g., plover) when creating compounds, use "p." as shorthands
         final_synonym = final_synonym.replace(word_initial + ".", headword)
