@@ -32,6 +32,8 @@ class SynonymExtractor:
             return None
         if re.fullmatch(r'[IVXL]+\.', final_synonym):
             return None
+        if re.fullmatch(r'[αβγδ]\.', final_synonym):
+            return None
         if re.fullmatch(r'[A-Za-z]\.?', final_synonym):
             return None
         if re.fullmatch(r'[0-9]\.?', final_synonym):
