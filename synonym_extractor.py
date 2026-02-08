@@ -131,7 +131,9 @@ class SynonymExtractor:
             validated = SynonymExtractor._prepare_and_validate_synonym(clean_headword, word_initial, synonym_text)
 
             # Apply the special rule: keep only if it contains the headword
-            # For prefix headwords (ending in '-'), strip the trailing '-' before checking
+            # For prefix headwords (ending in '-'), strip all trailing '-' before checking.
+            # This handles cases like 'for-' matching 'forgab', and also edge cases like 're--'.
+            # Using rstrip('-') removes all trailing hyphens, which is correct for prefix matching.
             headword_to_check = clean_headword.rstrip('-') if clean_headword.endswith('-') else clean_headword
             if validated and headword_to_check.lower() in validated.lower():
                 cleaned_syns.add(validated)
