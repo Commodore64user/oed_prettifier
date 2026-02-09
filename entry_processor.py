@@ -183,9 +183,10 @@ class EntryProcessor:
 
         # Heuristic approach to wrap in the forms section. note: there are multiple variations here so other forms sections found deep
         # into an entry might not be captured. HELP WANTED #fixme.
-        html = re.sub(r'<blockquote>(Forms:?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
+        html = re.sub(r'<blockquote>(\(?Forms:?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(?:<i>)?(Compared.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-        html = re.sub(r'<blockquote>(Also (?:[0-9])?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
+        html = re.sub(r'<blockquote>(\(?[Aa]lso (?:[0-9])?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
+        html = re.sub(r'<blockquote>(\([0-9].*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL) # see '-y' siffix^2
         html = re.sub(r'<blockquote>(<abr>Pa.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Past and <abr>pple.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Pl. <b>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
@@ -227,6 +228,8 @@ class EntryProcessor:
         html = re.sub(r'</blockquote><blockquote>(\s*)(<b>)?(<span class=|<abr>)', r'</blockquote><blockquote class="definition-partial">\1\2\3', html)
         html = re.sub(r'(_____</blockquote>)<blockquote>', r'\1<blockquote class="addendum">', html)
         html = re.sub(r'<blockquote>\*', '<blockquote class="subheading">*', html)
+        html = re.sub(r'<blockquote>([a-z].*?)</blockquote><blockquote class="definition-partial">',
+                      r'<blockquote class="definition-indent">\1</blockquote><blockquote class="definition-partial">', html) #see entry 'pneumono-'
         # This seems to be introducing some false positives, see entry "in", but overall it follows the OED pattern,
         # so keeping it for now, however it might need to be revisited. #fixme.
         html = html.replace('</blockquote><blockquote>', '</blockquote><blockquote class="usage-note">')
