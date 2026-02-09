@@ -26,7 +26,8 @@ class SynonymExtractor:
     def _prepare_and_validate_synonym(headword: str, word_initial: str, final_synonym: str) -> str | None:
         if not final_synonym or final_synonym in SynonymExtractor.IGNORED_SYN_WORDS:
             return None
-        if (not headword.startswith('-') and final_synonym.startswith('-')) or final_synonym.endswith('-'):
+        if (not headword.startswith('-') and final_synonym.startswith('-')) or \
+          (not headword.endswith('-') and final_synonym.endswith('-')):
             return None
         if re.search(r'\d{2,}', final_synonym):
             return None
