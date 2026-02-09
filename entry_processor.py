@@ -84,6 +84,7 @@ class EntryProcessor:
 
         html = re.sub(r'(<abr>†</abr>)\s', r'\1', html)
         html = re.sub(r'(<abr>¶</abr>)\s', r'\1', html)
+        html = re.sub(r'(<abr>‖</abr>)\s', r'\1', html)
         html = re.sub(r'<kref>(.*?)</kref>', r'<span class="kref">\1</span>', html)
         html = html.replace('<abr>=</abr>', '<span class="same-as">=</span>')
         html = re.sub(r'(<dtrn>(.*?)</dtrn>)\s*<dtrn>(.*?)</dtrn>', r' <br/>\1', html)
@@ -223,7 +224,7 @@ class EntryProcessor:
             html = self._process_pos_forms_section(html)
 
         # it is crazy how the mind forgets, why one does things ¯\_(ツ)_/¯, i believe this is here so main sections don't get turned into usage-notes.
-        html = re.sub(r'</blockquote><blockquote>(\s*)(<b>)?<span class=', r'</blockquote><blockquote class="definition-partial">\1\2<span class=', html)
+        html = re.sub(r'</blockquote><blockquote>(\s*)(<b>)?(<span class=|<abr>)', r'</blockquote><blockquote class="definition-partial">\1\2\3', html)
         html = re.sub(r'(_____</blockquote>)<blockquote>', r'\1<blockquote class="addendum">', html)
         html = re.sub(r'<blockquote>\*', '<blockquote class="subheading">*', html)
         # This seems to be introducing some false positives, see entry "in", but overall it follows the OED pattern,
