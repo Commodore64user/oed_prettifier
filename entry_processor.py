@@ -412,11 +412,13 @@ class EntryProcessor:
             letter = match.group(1)
             bar_map = {
                 'o': '\u00F8', # ø
+                'O':  '\u00D8',
                 'L': '\u0141',
                 'i': '\u0268',
-                # 'p': '', # no clue either, see issue https://github.com/Commodore64user/oed_prettifier/issues/12
+                'p': '\u1D7D', # still needs visual confirmation
                 'u': '\u0289',
-                # 'th': '', # no idea what this is, see issue https://github.com/Commodore64user/oed_prettifier/issues/12
+                'th': '\uA765', # still needs visual confirmation
+                'Th': '\uA764', # still needs visual confirmation
             }
             return bar_map.get(letter, match.group(0))
         html = re.sub(r'\{([^}]+)bar\}', replace_bar, html)
