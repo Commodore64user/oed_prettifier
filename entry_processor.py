@@ -170,7 +170,13 @@ class EntryProcessor:
             if count == 0:
                 result = re.sub(r'\]\s*</blockquote>', ']</blockquote></div> ', target_segment, count=1)
             # We add the notes class to all blockquotes inside this etymology block.
-            result = re.sub(r'(</blockquote>)<blockquote>', r'\1<blockquote class="etymology-notes">', result)
+            div_end = '</div> '
+            if div_end in result:
+                inside, after = result.split(div_end, 1)
+                inside = re.sub(r'(</blockquote>)<blockquote>', r'\1<blockquote class="etymology-notes">', inside)
+                result = inside + div_end + after
+            # else:
+            #     result = re.sub(r'(</blockquote>)<blockquote>', r'\1<blockquote class="etymology-notes">', result)
 
             # Reassemble the HTML: Pre-segment + Processed Segment + Post-segment
             html = html[:search_start] + result + html[search_end:]
@@ -237,6 +243,7 @@ class EntryProcessor:
         html = html.replace('</blockquote></div><blockquote>', '</blockquote></div><blockquote class="usage-note">')
         html = re.sub(r'(<blockquote class=")usage-note("><i><abr>)', r'\1phonetic\2', html)
 
+        html = html.replace('{two2n}', '2<sup>2<sup>n</sup></sup>') # Fermat number
         html = html.replace('{ppp}', '\u2034')  # ‴ (triple prime)
         html = html.replace('{pp}', '\u02ba')   # ʺ (modifier letter double prime)
         html = html.replace('{p}', '\u02c8')  # ˈ (primary stress marker) see entry flat adv and n^3 12.b year 1901.
@@ -245,8 +252,6 @@ class EntryProcessor:
         html = html.replace('{vb}', '\u007C') # vertical bar |
         html = html.replace('{oqq}', '\u201C')  # Left double quotation mark
         html = html.replace('{cqq}', '\u201D')  # Right double quotation mark
-        html = html.replace('{nfced}', '\u00B8') # cedilla [squiggly bit only, which technically is what a cedilla is ;)]
-        html = html.replace('{aacuced}', '\u00e1') # verified by og quote, see "id-al-adha" or issue #12
         html = html.replace('{pstlg}', '£')
         html = html.replace('{pcnt}', '%')
         html = html.replace('{cprt}', '©') # copyright
@@ -356,9 +361,11 @@ class EntryProcessor:
                 'd': 'd\u0327', # ḑ
                 't': '\u0163', # ţ
                 'z': 'z\u0327', # z̧
+                'nf': '\u00B8', # cedilla [squiggly bit only, which technically is what a cedilla is ;)]
+                'aacu': '\u00e1', # verified by og quote, see "id-al-adha" or issue #12
             }
             return cedilla_map.get(letter, match.group(0))
-        html = re.sub(r'\{([actdzCS])ced\}', replace_cedilla, html)
+        html = re.sub(r'\{([^}]+)ced\}', replace_cedilla, html)
         html = re.sub(r'⊇', 'e', html)
         # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
         html = re.sub(r'\u2013 ([,;\.])', f'– <b>{html_module.escape(self.headword)}</b>' + r'\1', html)
