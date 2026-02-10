@@ -237,19 +237,6 @@ class EntryProcessor:
         html = html.replace('</blockquote></div><blockquote>', '</blockquote></div><blockquote class="usage-note">')
         html = re.sub(r'(<blockquote class=")usage-note("><i><abr>)', r'\1phonetic\2', html)
 
-        # see "them"'s etymology.
-        def replace_acute(match):
-            letter = match.group(1)
-            accent_map = {
-                'a': '\u00e1',  'A': '\u00c1', # á
-                'e': '\u00e9',  'E': '\u00c9', # é
-                'i': '\u00ed',  'I': '\u00cd', # í
-                'o': '\u00f3',  'O': '\u00d3', # ó
-                'u': '\u00fa',  'U': '\u00da', # ú
-                'y': '\u00fd',  'Y': '\u00dd', # ý
-            }
-            return accent_map.get(letter, match.group(0))
-        html = re.sub(r'\{([aeiouyAEIOUY])acu\}', replace_acute, html)
         html = html.replace('{ppp}', '\u2034')  # ‴ (triple prime)
         html = html.replace('{pp}', '\u02ba')   # ʺ (modifier letter double prime)
         html = html.replace('{p}', '\u02c8')  # ˈ (primary stress marker) see entry flat adv and n^3 12.b year 1901.
@@ -319,20 +306,22 @@ class EntryProcessor:
         def replace_acute(match):
             letter = match.group(1)
             acute_map = {
+                'a': '\u00e1',  'A': '\u00c1', # á
+                'e': '\u00e9',  'E': '\u00c9', # é
+                'i': '\u00ed',  'I': '\u00cd', # í
+                'o': '\u00f3',  'O': '\u00d3', # ó
+                'u': '\u00fa',  'U': '\u00da', # ú
+                'y': '\u00fd',  'Y': '\u00dd', # ý
                 'nf':              '´',        # ´ (acute accent alone)
-                'y':               '\u00FD',   # ý
-                'i':               '\u00ED',   # í
-                'u':               '\u00FA',   # ú
                 # 't':               '???',      # t with acute?
                 'g':               '\u01F5',   # ǵ
                 'n':               '\u0144',   # ń
                 'w':               '\u1E83',   # ẃ
                 'r':               '\u0155',   # ŕ
                 'z':               '\u017A',   # ź
-                'E':               '\u00C9',   # É
-                'A':               '\u00C1',   # Á
-                'O':               '\u00D3',   # Ó
+                # 'Ae': '',
                 # 'giuml':           '???',      # g with umlaut + acute?
+                # 'gibreve':  '???',
                 # 'amac':            '???',      # a with macron + acute?
                 # 'wisub':           '???',      # w with subscript?
                 # 'uuml':            '\u01D8',   # ǘ (u with umlaut + acute)
@@ -343,14 +332,16 @@ class EntryProcessor:
                 # 'imac':            '???',      # i with macron + acute?
                 # 'hisub':           '???',      # h with subscript?
                 # 'ilenismac':       '???',      # i lenis with macron?
-                # 'Uleniscac':       '???',      # U lenis with caron?
+                # 'Ulenis':          '???',      # U lenis with caron?
                 # 'ymac':            '???',      # y with macron + acute?
                 # 'omac':            '???',      # o with macron + acute?
+                # 'obar': '???',
                 # 'edotab':          '???',      # e with dot above?
                 # 'mdotbl':          '???',      # m with dot below?
                 # 'umac':            '???',      # u with macron + acute?
                 # 'guuml':           '???',      # g with umlaut?
                 # 'rdotbl':          '???',      # r with dot below?
+                # 'utilde': '???'
             }
             return acute_map.get(letter, match.group(0))
         html = re.sub(r'\{([^}]+)acu\}', replace_acute, html)
