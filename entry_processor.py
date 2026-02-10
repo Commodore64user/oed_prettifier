@@ -217,8 +217,8 @@ class EntryProcessor:
         # Remove embedded styles and add classes to the spans
         html = re.sub(r'(<span style="color:#4B0082">\[?)<abr>([a-z]\.)</abr>(\]?</span>)', r'\1\2\3', html) # stay [f.] in entry 'acid'
         html = re.sub(r'<span style="color:#4B0082">(\[?[0-9]+\.\]?)</span>', r'<span class="senses">\1</span>', html)
-        html = re.sub(r'<span style="color:#4B0082">(\[?[a-z]\.\]?)</span>', r'<span class="subsenses">\1</span>', html)
-        html = re.sub(r'<span style="color:#4B0082"><abr>(\[?[a-z]\.\]?)</abr></span>', r'<span class="subsenses">\1</span>', html)
+        html = re.sub(r'<span style="color:#4B0082">(\[?[a-z]+\.\]?)</span>', r'<span class="subsenses">\1</span>', html) # entry 'set' has double letters
+        html = re.sub(r'<span style="color:#4B0082"><abr>(\[?[fn]\.\]?)</abr></span>', r'<span class="subsenses">\1</span>', html)
         html = re.sub(r'<span style="color:#4B0082">(\[?[0-9]+\.\]?) (\[?[a-z]\.\]?)</span>', r'<span class="senses">\1</span> <span class="subsenses">\2</span>', html)
         html = re.sub(r'<span style="color:#4B0082">(\[?[0-9]+\.\]?) <abr>(\[?[a-z]\.\]?)</abr></span>', r'<span class="senses">\1</span> <span class="subsenses">\2</span>', html)
         html = re.sub(r'<span style="color:#4B0082">(\[?[IVXL]+\.\]?) (\[?[0-9]+\.\]?)</span>', r'<span class="major-division">\1</span> <span class="senses">\2</span>', html)
@@ -510,7 +510,7 @@ class EntryProcessor:
         def fix_author_tr(match):
             content = match.group(0)
             words_to_move = [' tr.', ' quoted', ' [not', ' [impled', ' [implied', ' in<', ', etc.', ' [see']
-            prefix_to_move = ['*', '[impled', '[implied', '[see', '―', ' ,', 'Steel fixer', ': implied']
+            prefix_to_move = ['*', '[impled', '[implied', '[see', '―', ' ,', ', ', 'Steel fixer', ': implied']
 
             has_suffix = any(word in content for word in words_to_move)
             has_prefix = any(f'>{prefix}' in content for prefix in prefix_to_move)
