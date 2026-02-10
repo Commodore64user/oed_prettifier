@@ -401,7 +401,7 @@ class EntryProcessor:
                 'ope': '\u025b\u0304',   'revv': '\u028c\u0304',
                 'revr': '\u0279\u0304',   'obar': '\u00f8\u0304',
                 'ahook': 'ą̄̄̄',  'schwa': '\u0259\u0304',
-                'rcircbl': 'r̥̄',     # 'shtsyll': '',
+                'rcircbl': 'r̥̄',     'shtsyll': '\u222A\u0304', # still needs verification
                 'edotbl': 'e\u0323\u0304', 'odotbl': 'o\u0323\u0304',
                 # 'alenis': '', 'ilenis': '', # no clue for either, seems like greek chars used in entries sun and exipotic
                 'ibreve': 'i\u0304\u0306', 'obreve': 'o\u0304\u0306',
@@ -468,6 +468,22 @@ class EntryProcessor:
             }
             return arabic_map.get(letter, match.group(0))
         html = re.sub(r'\{ar([a-zA-Z]+)\}', replace_arabic, html)
+        def replace_dotbl(match):
+            letter = match.group(1)
+            dotbl_map = {
+                'c': 'c\u0323',   # c + dot below
+                'D': 'D\u0323',   # Ḍ
+                'eacu': 'é\u0323', # é + dot below
+                'e': 'e\u0323',   # ẹ
+                'E': 'E\u0323',   # Ẹ
+                'K': 'K\u0323',   # Ḳ
+                'l': 'l\u0323',   # ḷ
+                'R': 'R\u0323',   # Ṛ
+                'shacek': 'š\u0323', # š + dot below
+                'T': 'T\u0323',   # Ṭ
+            }
+            return dotbl_map.get(letter, match.group(0))
+        html = re.sub(r'\{([^}]+)dotbl\}', replace_dotbl, html)
 
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
         # Handle "Author abbreviation." pattern (like "Francis tr.")
