@@ -64,7 +64,7 @@ def finalise_entry(base_word: list[str] | str, final_definition: str, add_syns: 
     if add_syns:
         # The headword for synonym extraction is the first word in the base list.
         headword_for_syns = all_words[0]
-        synonyms = SynonymExtractor.extract(headword_for_syns, final_definition)
+        synonyms = SynonymExtractor.extract(headword_for_syns, final_definition, debug_words)
         if synonyms:
             all_words.extend(synonyms)
             syn_count = len(synonyms)

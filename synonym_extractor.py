@@ -57,7 +57,7 @@ class SynonymExtractor:
         return final_synonym
 
     @staticmethod
-    def extract(headword: str, html: str) -> list[str]:
+    def extract(headword: str, html: str, debug_words: set[str] | None) -> list[str]:
         """Extracts potential synonyms from <b> tags within the definition HTML."""
         try:
             soup = BeautifulSoup(html, 'lxml')
@@ -129,6 +129,8 @@ class SynonymExtractor:
         # Process tags that require the strict headword-containment check.
         for tag in strict_tags:
             synonym_text = SynonymExtractor._clean_synonym(tag.get_text())
+            if debug_words:
+                print(f"\n[STRICT] synonym_text: '{synonym_text}'")
             validated = SynonymExtractor._prepare_and_validate_synonym(clean_headword, word_initial, synonym_text)
 
             # Apply the special rule: keep only if it contains the headword
@@ -136,13 +138,19 @@ class SynonymExtractor:
             headword_to_check = clean_headword.rstrip('-') if clean_headword.endswith('-') else clean_headword
             if validated and headword_to_check.lower() in validated.lower():
                 cleaned_syns.add(validated)
+                if debug_words:
+                    print(f"[STRICT] validated:    '{validated}'\n")
 
         # Process all tags that require lax validation.
         for tag in lax_tags:
             synonym_text = SynonymExtractor._clean_synonym(tag.get_text())
+            if debug_words:
+                print(f"\n[LAX] synonym_text: '{synonym_text}'")
             validated = SynonymExtractor._prepare_and_validate_synonym(clean_headword, word_initial, synonym_text)
             if validated:
                 cleaned_syns.add(validated)
+                if debug_words:
+                    print(f"[LAX] validated:    '{validated}'\n")
 
         cleaned_syns.discard(clean_headword)
         return sorted(list(cleaned_syns))
