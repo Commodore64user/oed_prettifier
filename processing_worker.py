@@ -23,6 +23,8 @@ def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
         metrics['dot_corrected'] = 1
     elif word == ". s. d.":
         word = "l. s. d."
+    elif word == '‖' or word == '¶':
+        definition = "<br/>" + definition
     elif word in PROBLEMATIC_ABBREVIATIONS:
         definition = re.sub(r'<dtrn>.*?</dtrn>(\\n)?', '', definition, flags=re.DOTALL)
         metrics['dot_corrected'] = 1

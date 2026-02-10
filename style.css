@@ -93,3 +93,6 @@ blockquote.etymology-notes {
 /* .abbreviation {
     color: #7d7c7c;
 } */
+.spurious-entry {
+    margin-left: 1em;
+}
