@@ -227,6 +227,7 @@ class EntryProcessor:
         html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?)</span>', r'<span class="pos">\1</span>', html)
         html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[IVXL]+\.\]?)</span>', r'<span class="pos">\1</span> <span class="major-division">\2</span>', html)
         html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[0-9]+\.\]?)</span>', r'<span class="pos">\1</span> <span class="senses">\2</span>', html)
+        html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[a-z]\.\]?)</span>', r'<span class="pos">\1</span> <span class="subsenses">\2</span>', html)
 
         if 'class="pos"' in html:
             html = self._process_pos_forms_section(html)
@@ -511,8 +512,8 @@ class EntryProcessor:
         )
         # handle authors with abbreviated names.
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) (<abr>[\w]+\.</abr>)\s([0-9]+)', r'\1 <span class="author">\2</span> \3', html)
-        # matches: <b>1755</b> Johnson ...
-        html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) ([A-Z][a-zA-Z]+)', r'\1 <span class="author">\2</span>', html)
+        # matches: <b>1755</b> Johnson <span class="quotes">...
+        html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) ([A-Z][a-zA-Z]+) (<span class="quotes">)', r'\1 <span class="author">\2</span> \3', html)
         # matches the following pattern: "<b>1855</b> <abr">Geo.</abr> Eliot in"
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) (<abr>[\w]+\.</abr>)\s([\w]+)\s(in)', r'\1 <span class="author">\2 \3</span> \4', html)
         # This grew out of control, but is seems to be held together by fairy dust, it works although this should have been done in a more structured way.
