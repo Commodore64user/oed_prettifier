@@ -312,42 +312,42 @@ class EntryProcessor:
         def replace_acute(match):
             letter = match.group(1)
             acute_map = {
-                'a': '\u00e1',  'A': '\u00c1', # á
-                'e': '\u00e9',  'E': '\u00c9', # é
-                'i': '\u00ed',  'I': '\u00cd', # í
-                'o': '\u00f3',  'O': '\u00d3', # ó
-                'u': '\u00fa',  'U': '\u00da', # ú
-                'y': '\u00fd',  'Y': '\u00dd', # ý
-                'nf':              '´',        # ´ (acute accent alone)
-                # 't':               '???',      # t with acute?
-                'g':               '\u01F5',   # ǵ
-                'n':               '\u0144',   # ń
-                'w':               '\u1E83',   # ẃ
-                'r':               '\u0155',   # ŕ
-                'z':               '\u017A',   # ź
-                # 'Ae': '',
-                # 'giuml':           '???',      # g with umlaut + acute?
-                # 'gibreve':  '???',
-                # 'amac':            '???',      # a with macron + acute?
-                # 'wisub':           '???',      # w with subscript?
-                # 'uuml':            '\u01D8',   # ǘ (u with umlaut + acute)
-                # 'aisub':           '???',      # a with subscript?
-                # 'alenissub':       '???',      # a lenis with subscript?
-                # 'euml':            '???',      # e with umlaut + acute?
-                # 'eundl':           '???',      # e with underline?
-                # 'imac':            '???',      # i with macron + acute?
-                # 'hisub':           '???',      # h with subscript?
-                # 'ilenismac':       '???',      # i lenis with macron?
-                # 'Ulenis':          '???',      # U lenis with caron?
-                # 'ymac':            '???',      # y with macron + acute?
-                # 'omac':            '???',      # o with macron + acute?
-                # 'obar': '???',
-                # 'edotab':          '???',      # e with dot above?
-                # 'mdotbl':          '???',      # m with dot below?
-                # 'umac':            '???',      # u with macron + acute?
-                # 'guuml':           '???',      # g with umlaut?
-                # 'rdotbl':          '???',      # r with dot below?
-                # 'utilde': '???'
+                'a': '\u00e1',          'A': '\u00c1',          # á
+                'e': '\u00e9',          'E': '\u00c9',          # é
+                'i': '\u00ed',          'I': '\u00cd',          # í
+                'o': '\u00f3',          'O': '\u00d3',          # ó
+                'u': '\u00fa',          'U': '\u00da',          # ú
+                'y': '\u00fd',          'Y': '\u00dd',          # ý
+                'nf':    '´',                                   # ´ (acute alone)
+                'g':     '\u01F5',                              # ǵ
+                'n':     '\u0144',                              # ń
+                't':     't\u0301',                             # t + acute
+                'w':     '\u1E83',                              # ẃ
+                'r':     '\u0155',                              # ŕ
+                'z':     '\u017A',                              # ź
+                'Ae':    '\u01FC',                              # Ǽ (precomposed)
+                'uuml':  '\u01D8',                              # ǘ (precomposed)
+                'aisub': '\u1FB4',                              # ᾴ (precomposed Greek)
+                'amac':  '\u0101\u0301',                        # ā + acute
+                'omac':  '\u014D\u0301',                        # ō + acute
+                'imac':  '\u012B\u0301',                        # ī + acute
+                'umac':  '\u016B\u0301',                        # ū + acute
+                'ymac':  '\u0233\u0301',                        # ȳ + acute
+                'euml':  '\u00EB\u0301',                        # ë + acute
+                'obar':  '\u00F8\u0301',                        # ø + acute
+                'edotab':'\u0117\u0301',                        # ė + acute
+                'utilde':'\u0169\u0301',                        # ũ + acute
+                'rdotbl':'\u1E5B\u0301',                        # ṛ + acute
+                'mdotbl':'\u1E43\u0301',                        # ṃ + acute
+                'gibreve':'\u011F\u0301',                       # ğ + acute
+                'eundl': 'e\u0332\u0301',                       # e + underline + acute
+                'giuml':           '\u0390',                    # ΐ (precomposed, iota + diaeresis + acute)
+                'wisub':          '\u1FF4',                     # w with subscript?
+                'alenisisub': '\u1F84',                         # ᾄ
+                'hisub':           '\u1FC4',                    # ῄ
+                'ilenismac': '\u1F30\u0304\u0301',              # ἰ + macron + acute
+                'Ulenis':    '\u03A5\u0313\u0301',              # Υ + smooth breathing + acute
+                'guuml':           '\u03B0',                    # ΰ (precomposed, upsilon + diaeresis + acute)
             }
             return acute_map.get(letter, match.group(0))
         html = re.sub(r'\{([^}]+)acu\}', replace_acute, html)
@@ -402,7 +402,7 @@ class EntryProcessor:
                 'ahook': 'ą̄̄̄',  'schwa': '\u0259\u0304',
                 'rcircbl': 'r̥̄',     'shtsyll': '\u222A\u0304', # still needs verification
                 'edotbl': 'e\u0323\u0304', 'odotbl': 'o\u0323\u0304',
-                # 'alenis': '', 'ilenis': '', # no clue for either, seems like greek chars used in entries sun and exipotic
+                'alenis': '\u1F00\u0304', 'ilenis': '\u1F30\u0304', # still needs verification, greek chars used in entries sun and exipotic
                 'ibreve': 'i\u0304\u0306', 'obreve': 'o\u0304\u0306',
             }
             return mac_map.get(letter, match.group(0))
@@ -511,6 +511,8 @@ class EntryProcessor:
         )
         # handle authors with abbreviated names.
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) (<abr>[\w]+\.</abr>)\s([0-9]+)', r'\1 <span class="author">\2</span> \3', html)
+        # matches: <b>1755</b> Johnson ...
+        html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) ([A-Z][a-zA-Z]+)', r'\1 <span class="author">\2</span>', html)
         # matches the following pattern: "<b>1855</b> <abr">Geo.</abr> Eliot in"
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(?:\d{3,4})</b>) (<abr>[\w]+\.</abr>)\s([\w]+)\s(in)', r'\1 <span class="author">\2 \3</span> \4', html)
         # This grew out of control, but is seems to be held together by fairy dust, it works although this should have been done in a more structured way.
