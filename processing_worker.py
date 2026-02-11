@@ -7,7 +7,7 @@ CORE_HOMOGRAPH_PATTERN = r'(?:<b><span style="color:#8B008B">▪ <span>(?:[IVXL]
 HOMOGRAPH_PATTERN = re.compile(f'(?={CORE_HOMOGRAPH_PATTERN})')
 PROBLEMATIC_ABBREVIATIONS = ["Ed.", "Gov.", "mod.", "MS.", "viz.", "prob.", "Pol. Econ.", "Oxon."]
 # Words with <dtrn> sandwich pattern but no trailing punctuation.
-PROBLEMATIC_DTRN_WORDS = ['H', 'John', 'Timon']
+PROBLEMATIC_DTRN_WORDS = ['aai', 'H', 'John', 'Timon']
 
 def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
     """Handles special logic for words ending in full stops or symbols."""
@@ -25,6 +25,8 @@ def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
         word = "l. s. d."
     elif word == '‖' or word == '¶':
         definition = "<br/>" + definition
+    elif word == "aai":
+        word = "açai"
     elif word in PROBLEMATIC_ABBREVIATIONS:
         definition = re.sub(r'<dtrn>.*?</dtrn>(\\n)?', '', definition, flags=re.DOTALL)
         metrics['dot_corrected'] = 1
