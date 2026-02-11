@@ -545,7 +545,15 @@ class EntryProcessor:
         html = re.sub(r'<span class="author">.*?</span>', fix_author_tr, html)
         # single occurence in entry "crumpet", doing it for Lady Bracknell...
         html = re.sub(r'<span class="author">(a tender cake of o loof, spreynde with oile, paast sodun)</span>', r'\1', html)
-        html = html.replace('<div class="quotations">]</div>', '<div class="spurious-entry">]</div>')
+        if html.startswith('<b>['):
+            for old, new in [
+                ('<div class="quotations">]</div>', '<span class="spurious-entry">]</span>'),
+                (']</div>',                         '</div><span class="spurious-entry">]</span>'),
+                (']</blockquote>',                  '</blockquote><span class="spurious-entry">]</span>'),
+            ]:
+                if old in html:
+                    html = new.join(html.rsplit(old, 1))
+                    break
 
         html = re.sub(r'<span class="author">in</span>', 'in', html)
         html = re.sub(r'(<span class="author">)(\? )(.*?)(</span>)', r'\2\1\3\4', html)

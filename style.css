@@ -93,6 +93,8 @@ blockquote.etymology-notes {
 /* .abbreviation {
     color: #7d7c7c;
 } */
+ /* This is the closing square bracket of spurious (incorrect) entries */
 .spurious-entry {
+    display: block;
     margin-left: 1em;
 }
