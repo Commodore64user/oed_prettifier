@@ -483,6 +483,22 @@ class EntryProcessor:
             }
             return dotbl_map.get(letter, match.group(0))
         html = re.sub(r'\{([^}]+)dotbl\}', replace_dotbl, html)
+        def replace_tilde(match):
+            letter = match.group(1)
+            tilde_map = {
+                'aisub': 'ᾷ',                'amac':  '\u0101\u0303',  # ā + combining tilde
+                'd':     'd\u0303',          'edotab':'\u0117\u0303',  # ė + combining tilde
+                'e':     '\u1EBD',           'i':     '\u0129',
+                'l':     'l\u0303',          'm':     'm\u0303',
+                'nf':    '\u02DC',           'omac':  '\u014D\u0303',  # ō + combining tilde
+                'q':     'q\u0303',          'revv':  '\u028C\u0303',  # ʌ + combining tilde
+                'r':     'r\u0303',          'schwa': '\u0259\u0303',  # ə + combining tilde
+                's':     's\u0303',          't':     't\u0303',
+                'uang':  'ů̃',                'uda':   '\u0250\u0303',
+                'u':     '\u0169',           'y':     '\u1EF9',
+            }
+            return tilde_map.get(letter, match.group(0))
+        html = re.sub(r'\{([^}]+)tilde\}', replace_tilde, html)
 
         html = re.sub(r'(<b>(?:\?)?(?:<i>[acp]</i>)?(\d{3,4})</b>) (<abr>tr\.</abr>)(\s<i>)', r'\1 <span class="translator">tr.</span>\4', html)
         # Handle "Author abbreviation." pattern (like "Francis tr.")
