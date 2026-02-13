@@ -7,7 +7,26 @@ CORE_HOMOGRAPH_PATTERN = r'(?:<b><span style="color:#8B008B">▪ <span>(?:[IVXL]
 HOMOGRAPH_PATTERN = re.compile(f'(?={CORE_HOMOGRAPH_PATTERN})')
 PROBLEMATIC_ABBREVIATIONS = ["Ed.", "Gov.", "mod.", "MS.", "viz.", "prob.", "Pol. Econ.", "Oxon."]
 # Words with <dtrn> sandwich pattern but no trailing punctuation.
-PROBLEMATIC_DTRN_WORDS = ['aai', 'H', 'John', 'Timon']
+PROBLEMATIC_DTRN_WORDS = ['H', 'John', 'Timon']
+CEDILLA_CORRECTIONS = {
+    'aai': 'açai',                      'Alenon': 'Alençon',
+    'almaour': 'almaçour',              'aperu': 'aperçu',
+    'ariama': 'çariama',                'beau garon': 'beau garçon',
+    'cachaa': 'cachaça',                'comme a': 'comme ça',
+    'curaao': 'curaçao',                'curaao bird': 'curaçao bird',
+    'curaoa': 'curaçoa',                'douaine': 'douçaine',
+    'en garon': 'en garçon',            'escoinon': 'escoinçon',
+    'faadal': 'façadal',                'faade': 'façade',
+    'faonné': 'façonné',                'faon de parler': 'façon de parler',
+    'fianailles': 'fiançailles',        'Franois Premier': 'François Premier',
+    'garonnière': 'garçonnière',        'garon': 'garçon',
+    'glaon': 'glaçon',                  'Juranon': 'Jurançon',
+    'limaon': 'limaçon',                'Niois': 'Niçois',
+    'piaaba': 'piaçaba',                'plus a change': 'plus ça change',
+    'Provenal': 'Provençal',            'remplaant': 'remplaçant',
+    'salade nioise': 'salade niçoise',  'soupon': 'soupçon',
+    'tajau': 'tajaçu',                  'tayau': 'tajaçu',
+}
 
 def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
     """Handles special logic for words ending in full stops or symbols."""
@@ -25,8 +44,6 @@ def _handle_dotted_word_quirks(word: str, definition: str) -> tuple:
         word = "l. s. d."
     elif word == '‖' or word == '¶':
         definition = "<br/>" + definition
-    elif word == "aai":
-        word = "açai"
     elif word in PROBLEMATIC_ABBREVIATIONS:
         definition = re.sub(r'<dtrn>.*?</dtrn>(\\n)?', '', definition, flags=re.DOTALL)
         metrics['dot_corrected'] = 1
@@ -97,6 +114,10 @@ def process_entry_line_worker(line_tuple: tuple[str, bool, set[str] | None]) -> 
         if word.endswith(('.', '‖', '¶', '†')) or word in PROBLEMATIC_DTRN_WORDS:
             entry_word_base, definition, dot_metrics = _handle_dotted_word_quirks(word, definition)
             metrics.update(dot_metrics)
+        # These entries have the letter 'ç' missing from their search key.
+        if word in CEDILLA_CORRECTIONS:
+            entry_word_base = CEDILLA_CORRECTIONS[word]
+            word = entry_word_base
 
         split_parts = HOMOGRAPH_PATTERN.split(definition)
         processed_results = []
