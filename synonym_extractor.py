@@ -7,7 +7,7 @@ class SynonymExtractor:
     """Handles extraction and cleaning of synonyms from entry HTML."""
     SYNONYM_CLEANUP_MAP = {
         "†": "",   "*": "",   "ˈ": "",   "ˌ": "",   "(": "",   ")": "",   "[": "",   "]": "",   "‖": "",   "¶": "",   "?": "",   "!": "",
-        "–": "",   "—": "",   ";": "",   ":": "",   "  ": " "
+        "–": "",   "—": "",   ";": "",   ":": "",   "  ": " ", "- ": "-", " -": "-"
     }
 
     IGNORED_SYN_WORDS = {'to', 'or', 'and', 'a', 'an', 'the', 'after', 'before', 'in', 'on', 'at', 'for', 'with', 'by', 'of', 'from', 'Derivatives.',
@@ -50,6 +50,8 @@ class SynonymExtractor:
             final_synonym = final_synonym.rstrip('.')
         if '..' in final_synonym:
             return None
+        if '--' in final_synonym:
+            final_synonym = final_synonym.replace("--", "-")
         if final_synonym.startswith('―') or final_synonym.startswith(','):
             return None
         # some entries (e.g., plover) when creating compounds, use "p." as shorthands
