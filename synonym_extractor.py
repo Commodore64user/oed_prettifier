@@ -1,7 +1,6 @@
 """Provides the SynonymExtractor class for parsing and cleaning synonym data from dictionary HTML."""
 
 import re
-from bs4 import BeautifulSoup, Tag, FeatureNotFound
 
 class SynonymExtractor:
     """Handles extraction and cleaning of synonyms from entry HTML."""
@@ -61,6 +60,7 @@ class SynonymExtractor:
     @staticmethod
     def extract(headword: str, html: str, debug_words: set[str] | None) -> list[str]:
         """Extracts potential synonyms from <b> tags within the definition HTML."""
+        from bs4 import BeautifulSoup, Tag, FeatureNotFound # Fix macOS fork-safety deadlock by lazy-loading BeautifulSoup imports
         try:
             soup = BeautifulSoup(html, 'lxml')
         except FeatureNotFound:

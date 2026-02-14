@@ -1,6 +1,5 @@
 import re
 import html as html_module
-from bs4 import BeautifulSoup, Tag, FeatureNotFound
 
 class EntryProcessor:
     """Encapsulates all HTML cleaning and processing for a single dictionary entry."""
@@ -13,6 +12,7 @@ class EntryProcessor:
     def _process_pos_forms_section(html: str) -> str:
         """Finds a 'forms' section demarcated by <span class="pos"> markers
         and wraps any unstyled sense/subsense blockquotes within that range."""
+        from bs4 import BeautifulSoup, Tag, FeatureNotFound # Fix macOS fork-safety deadlock by lazy-loading BeautifulSoup imports
         try:
             soup = BeautifulSoup(html, 'lxml')
         except FeatureNotFound:
@@ -166,7 +166,7 @@ class EntryProcessor:
 
             target_segment = html[search_start:search_end]
             # Apply replacements only to this target segment
-            result, count = re.subn(r'\](</span>)\s*</blockquote>', ']</span></blockquote></div> ', target_segment, count=1)
+            result, count = re.subn(r'\],?(</span>)\s*</blockquote>', ']</span></blockquote></div> ', target_segment, count=1)
             if count == 0:
                 result = re.sub(r'\]\s*</blockquote>', ']</blockquote></div> ', target_segment, count=1)
             # We add the notes class to all blockquotes inside this etymology block.
