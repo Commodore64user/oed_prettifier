@@ -192,7 +192,8 @@ class EntryProcessor:
         html = re.sub(r'<blockquote>(\(?Forms:?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(?:<i>)?(Compared.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(\(?[Aa]lso (?:[0-9])?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-        html = re.sub(r'<blockquote>(\([0-9].*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL) # see '-y' siffix^2
+        html = re.sub(r'<blockquote>(\(?[0-9]-?[0-9]? <b>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL) # see '-y' suffix^2
+        html = re.sub(r'<blockquote>([0-9]–[0-9]?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL) # see 'ABC'
         html = re.sub(r'<blockquote>(<abr>Pa.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Past and <abr>pple.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Pl. <b>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
@@ -234,6 +235,7 @@ class EntryProcessor:
 
         # it is crazy how the mind forgets, why one does things ¯\_(ツ)_/¯, i believe this is here so main sections don't get turned into usage-notes.
         html = re.sub(r'</blockquote><blockquote>(\s*)(<b>)?(<span class=|<abr>)', r'</blockquote><blockquote class="definition-partial">\1\2\3', html)
+        html = re.sub(r'</blockquote><blockquote>(\s*)([0-9]\.)', r'</blockquote><blockquote class="definition-partial">\1\2', html)
         html = re.sub(r'(_____</blockquote>)<blockquote>', r'\1<blockquote class="addendum">', html)
         html = re.sub(r'<blockquote>\*', '<blockquote class="subheading">*', html)
         html = re.sub(r'<blockquote>([a-z].*?)</blockquote><blockquote class="definition-partial">',
@@ -262,6 +264,8 @@ class EntryProcessor:
         html = html.replace('{revsc}', '\u061B') # reverse semi-colon
         html = html.replace('{arzero}', '\u0660')  # Arabic-Indic zero ٠
         html = html.replace('{scruple}', '℈') # small unit of measure
+        html = html.replace('{smY}', 'ʏ') # small capital Y
+        html = html.replace('{smR}', 'ʀ') # small capital R - uvular trill, like French R
         # chemistry stuff
         html = html.replace('{pm}', '±')    # plus or minus
         html = html.replace('{equil}', '⇌')    # equilibrium
