@@ -192,7 +192,7 @@ class EntryProcessor:
         html = re.sub(r'<blockquote>(\(?Forms:?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(?:<i>)?(Compared.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(\(?[Aa]lso (?:[0-9])?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-        html = re.sub(r'<blockquote>(\(?[0-9]-?[0-9]? <b>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL) # see '-y' suffix^2
+        html = re.sub(r'<blockquote>(\(?[0-9][-–]?[0-9]? <b>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL) # see '-y' suffix^2
         html = re.sub(r'<blockquote>([0-9]–[0-9]?.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL) # see 'ABC'
         html = re.sub(r'<blockquote>(<abr>Pa.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Past and <abr>pple.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
@@ -200,7 +200,7 @@ class EntryProcessor:
         html = re.sub(r'<blockquote>(Usually in <abr>pl.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(commonly in (?:<i>)?<abr>pl.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Inflected .*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
-        html = re.sub(r'<blockquote>(In [0-9](?:–[0-9])? .*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
+        html = re.sub(r'<blockquote>(\(?In [0-9](?:–[0-9])? .*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         # sometimes the 'forms' section is placed below its normal location and is preceded by a greek letter, e.g., "α", so we need to capture that too.
         html = re.sub(r'<blockquote>(\(<i>[\u03b1-\u03c9]</i>\).*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>([\u03b1-\u03c9]<sup>[0-9]</sup>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL) # greek letters
@@ -261,6 +261,7 @@ class EntryProcessor:
         html = html.replace('{cprt}', '©') # copyright
         html = html.replace('{hash}', '#')
         html = html.replace('{cross}', '✠')
+        html = html.replace('{fatpara}', '\'¶\'') # liberty taken here, the qoutes should differedntiate it from one used by OED
         html = html.replace('{revsc}', '\u061B') # reverse semi-colon
         html = html.replace('{arzero}', '\u0660')  # Arabic-Indic zero ٠
         html = html.replace('{scruple}', '℈') # small unit of measure
@@ -282,6 +283,8 @@ class EntryProcessor:
         html = html.replace('{cbigpren}', ')')    # large closing parens
         html = html.replace('{obigsb}', '[')    # large opening square brackets
         html = html.replace('{cbigsb}', ']')    # large closing square brackets
+
+        html = html.replace('{elem}', '∈')
 
         html = html.replace('{supg}', 'g') # odd one, seems to be just a regular 'g'
         html = html.replace('{ddag}', '‡')
