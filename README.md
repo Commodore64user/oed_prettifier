@@ -25,7 +25,7 @@ To run this script, you will need:
 * Python 3.10+
 * PyGlossary: A Python library for converting dictionary formats.
 * Beautifulsoup4: A Python library for parsing and pulling data out of HTML and XML files.
-* dictzip: A command-line tool for compressing Stardict dictionary files. It is part of the `dictd` package on most Linux distributions.
+* dictzip: A command-line tool for compressing files. It is part of the `dictd` package on most Linux distributions.
 
 ## Installation (on macOS)
 
@@ -46,7 +46,7 @@ brew install dictzip
 First you will need to convert your existing copy of the OED to a `.tsv` file, you can do so by running
 
 ```
-pyglossary ode_file_name.ifo ode_new_name.tsv
+pyglossary oed_file_name.ifo oed_new_name.tsv
 ```
 
 The script is run from the command line and accepts four arguments: the path to the input TSV file, the base name for the output Stardict files, an optional flag for adding synonyms and the number of workers to be used (more info further down).
