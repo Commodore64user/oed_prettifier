@@ -110,7 +110,7 @@ class SynonymExtractor:
         remaining_tags = all_b_tags - lax_tags
 
         strict_blocks = set()
-        for marker in soup.find_all('span', class_=['senses', 'subsenses']):
+        for marker in soup.find_all('span', class_=['senses', 'subsenses', 'major-division']):
             parent_block = marker.find_parent('blockquote')
             if parent_block:
                 strict_blocks.add(parent_block)
