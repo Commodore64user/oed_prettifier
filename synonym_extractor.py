@@ -53,6 +53,8 @@ class SynonymExtractor:
             final_synonym = final_synonym.replace("--", "-")
         if final_synonym.startswith('―') or final_synonym.startswith(','):
             return None
+        if re.match(r'to (?!a |an |be |the )', final_synonym):
+            final_synonym = final_synonym[3:]
         # some entries (e.g., plover) when creating compounds, use "p." as shorthands
         final_synonym = final_synonym.replace(word_initial + ".", headword)
         return final_synonym
