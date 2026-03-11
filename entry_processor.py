@@ -252,8 +252,11 @@ class EntryProcessor:
         html = html.replace('{pp}', '\u02ba')   # ʺ (modifier letter double prime)
         html = html.replace('{p}', '\u02c8')  # ˈ (primary stress marker) see entry flat adv and n^3 12.b year 1901.
         html = html.replace('{ddd}', '...')
+        html = html.replace('{tittle}', '⋰')
         html = html.replace('{bra}', '⟨ |') # refers to a vector in quantum mech.
         html = html.replace('{vb}', '\u007C') # vertical bar |
+        html = html.replace('{ob}', '{')
+        html = html.replace('{cb}', '}')
         html = html.replace('{oqq}', '\u201C')  # Left double quotation mark
         html = html.replace('{cqq}', '\u201D')  # Right double quotation mark
         html = html.replace('{pstlg}', '£')
@@ -302,8 +305,8 @@ class EntryProcessor:
 
         html = html.replace('{Tse}', 'Ц') # cyrillic
         html = html.replace('{wlenisisub}', 'ᾠ')
+        html = html.replace('{schwafrbl}', 'ə̯')
         html = html.replace('{nfgra}', 'ˋ')
-        html = html.replace('{nfcirc}', 'ˆ')
         def format_fraction(match):
             key = match.group(1)
             fraction_map = {
@@ -379,6 +382,7 @@ class EntryProcessor:
         # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
         html = re.sub(r'\u2013 ([,;\.])', f'– <b>{html_module.escape(self.headword)}</b>' + r'\1', html)
         html = re.sub(r'([0-9]) ([,;\.])', r'\1' + f' <b>{html_module.escape(self.headword)}</b>' + r'\2', html)
+        # html = re.sub(r'\u2013 ([,;\.])', f'– <b>{html_module.escape(self.headword)}</b>' + r'\1', html) TODO # I forgot which headword it was
         def replace_breve(match):
             letter = match.group(1)
             breve_map = {
@@ -461,6 +465,34 @@ class EntryProcessor:
             }
             return ring_below_map.get(letter, match.group(0))
         html = re.sub(r'\{([lmn])circbl\}', replace_ring_below, html)
+        def replace_circ(match):
+            letter = match.group(1)
+            circ_map = {
+                'c':       '\u0109',        # ĉ
+                'epsilon': '\u025b\u0302',  # ɛ̂
+                'g':       '\u011d',        # ĝ
+                'n':       'n\u0302',       # n̂
+                'nf':      '\u0302',        # ̂ (bare circumflex)
+                'ohg':     '\u00f4',        # ô
+                's':       '\u015d',        # ŝ
+                'uuml':    '\u00fc\u0302',  # ü̂
+                'w':       '\u0175',        # ŵ
+            }
+            return circ_map.get(letter, match.group(0))
+        html = re.sub(r'\{([^}]+)circ\}', replace_circ, html)
+        def replace_frown(match):
+            letter = match.group(1)
+            frown_map = {
+                'alenisisub': '\u1f80\u0311',  # ᾀ̑
+                'Elenis':     '\u1f18\u0311',  # Ἐ̑
+                'hasperisub': '\u1f97\u0311',  # ᾗ̑
+                'm':          'm\u0311',       # m̑
+                'nf':         '\u0311',        # ̑ (bare frown)
+                'o':          'o\u0311',       # ȏ
+                'u':          'u\u0311',       # ȗ
+            }
+            return frown_map.get(letter, match.group(0))
+        html = re.sub(r'\{([^}]+)frown\}', replace_frown, html)
         # Absolutely no clue, whether this is correct or not. i am cheating here and using help from AI
         def replace_arabic(match):
             letter = match.group(1)
@@ -571,6 +603,7 @@ class EntryProcessor:
         html = re.sub(r'<span class="author">.*?</span>', fix_author_tr, html)
         # single occurence in entry "crumpet", doing it for Lady Bracknell...
         html = re.sub(r'<span class="author">(a tender cake of o loof, spreynde with oile, paast sodun)</span>', r'\1', html)
+        html. html.replace('</b>; β.</blockquote>', '</b>; β<b>otherwise</b>.</blockquote>')
         if html.startswith('<b>['):
             for old, new in [
                 ('<div class="quotations">]</div>', '<span class="spurious-entry">]</span>'),
