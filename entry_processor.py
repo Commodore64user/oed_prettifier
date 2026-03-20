@@ -603,7 +603,7 @@ class EntryProcessor:
         html = re.sub(r'<span class="author">.*?</span>', fix_author_tr, html)
         # single occurence in entry "crumpet", doing it for Lady Bracknell...
         html = re.sub(r'<span class="author">(a tender cake of o loof, spreynde with oile, paast sodun)</span>', r'\1', html)
-        html. html.replace('</b>; β.</blockquote>', '</b>; β<b>otherwise</b>.</blockquote>')
+        html = html.replace('</b>; β.</blockquote>', '</b>; β<b>otherwise</b>.</blockquote>')
         if html.startswith('<b>['):
             for old, new in [
                 ('<div class="quotations">]</div>', '<span class="spurious-entry">]</span>'),
