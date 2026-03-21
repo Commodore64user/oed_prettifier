@@ -5,27 +5,37 @@ import time
 import shutil
 import itertools
 import subprocess
-from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor
-from pyglossary.glossary_v2 import Glossary
-from processing_worker import process_entry_line_worker
 from concurrent.futures import as_completed
+from dataclasses import dataclass
+from pathlib import Path
+from processing_worker import process_entry_line_worker
+from pyglossary.glossary_v2 import Glossary
+
+@dataclass
+class ConverterConfig:
+    input_tsv: Path
+    output_ifo: str
+    add_syns: bool
+    workers: int | None
+    debug_words: list[str] | None
+    dump_html: bool
 
 class DictionaryConverter:
     """Orchestrates the conversion from a TSV file to a Stardict dictionary."""
-    def __init__(self, input_tsv: Path, output_ifo: str, add_syns: bool, workers: int | None, debug_words: list[str] | None, dump_html: bool):
-        if not input_tsv.is_file():
-            sys.exit(f"Error: Input TSV file not found at '{input_tsv}'")
-        self.input_tsv = input_tsv
-        self.output_ifo_name = output_ifo
-        self.add_syns = add_syns
-        self.dump_html = dump_html
-        self.debug_words = set(debug_words) if debug_words else None
+    def __init__(self, config: ConverterConfig):
+        if not config.input_tsv.is_file():
+            sys.exit(f"Error: Input TSV file not found at '{config.input_tsv}'")
+        self.input_tsv = config.input_tsv
+        self.output_ifo_name = config.output_ifo
+        self.add_syns = config.add_syns
+        self.dump_html = config.dump_html
+        self.debug_words = set(config.debug_words) if config.debug_words else None
 
         if self.debug_words:
             self.workers = 1
-        elif workers is not None:
-            self.workers = max(1, min(workers, os.cpu_count() or 1))
+        elif config.workers is not None:
+            self.workers = max(1, min(config.workers, os.cpu_count() or 1))
         else:
             self.workers = max(1, (os.cpu_count() or 1) - 1)
 
@@ -267,5 +277,15 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--dump", action="store_true", help="When used with --debug, prints the final HTML of the processed entry to the console.")
     args = parser.parse_args()
 
-    converter = DictionaryConverter(args.input_tsv, args.output_ifo, args.add_syns, args.workers, args.debug, args.dump)
+    # Create the config object
+    config = ConverterConfig(
+        input_tsv=args.input_tsv,
+        output_ifo=args.output_ifo,
+        add_syns=args.add_syns,
+        workers=args.workers,
+        debug_words=args.debug,
+        dump_html=args.dump
+    )
+
+    converter = DictionaryConverter(config)
     converter.run()
