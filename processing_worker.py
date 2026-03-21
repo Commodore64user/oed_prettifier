@@ -186,7 +186,7 @@ def process_entry_line_worker(line_tuple: tuple[str, bool, set[str] | None]) -> 
                 final_definition = final_definition.replace(headword_div, '', 1)
                 # Finally, wrap the headword in a span tag, to match the expected format.
                 final_definition = re.sub(r'<b>(.*?)</b>', r'<span class="headword"><b>\1</b></span>', final_definition, count=1)
-            elif re.search(r'<span class="headword"><b>(.*?)</b></span>(<i>)?(<span class="abbreviation">\w|[\w])', final_definition):
+            elif re.search(r'<span class="headword"><b>(.*?)</b></span>(<i>)?(<span class="abbreviation">\w|[\w\(\?])', final_definition):
                 # some entries (see "gen") need some space
                 final_definition = final_definition.replace(headword_div, headword_div + ' ', 1)
 
