@@ -14,69 +14,7 @@ class DuplicateHandler:
         self.seen_hashes = {}        # hash -> index in self.entries
         self.dropped_log = {}        # hash -> list of dropped headwords [word1, word2]
 
-    # def add(self, words: list[str], definition: str, is_split_part: bool = False):
-    #     """
-    #     Add an entry. If the definition hash exists, merge 'words' into the existing entry.
-    #     Otherwise, store it as a new entry.
-
-    #     is_split_part: If True, applies stricter merging rules to prevent false positives
-    #                    where a headword from a split source entry doesn't apply to one of
-    #                    the split parts.
-    #     """
-    #     # Hash the processed definition
-    #     def_hash = hashlib.sha256(definition.encode('utf-8')).hexdigest()
-
-    #     if def_hash in self.seen_hashes:
-    #         # duplicate found
-    #         existing_idx = self.seen_hashes[def_hash]
-    #         existing_entry = self.entries[existing_idx]
-
-    #         # The first word of the new entry is the headword from the source file.
-    #         # Since this entry is a duplicate of an existing one (based on definition hash),
-    #         # we keeping the existing entry as the "primary" and effectively "dropping" this
-    #         # new headword as a separate entry, instead merging it as a synonym.
-    #         dropped_headword = words[0]
-
-    #         # Logic for split entries:
-    #         # If this comes from a split, the dropped headword MUST appear in the
-    #         # definition text to be considered a valid synonym. This prevents
-    #         # "Abelite" (which applies to Homograph I) being attached to Homograph II
-    #         # just because the source "Abelite" entry matched the source "Abelian" entry.
-    #         if is_split_part:
-    #             # Extract the headword span content to narrow down the search
-    #             # We target the <b>...</b> block inside the headword span to handle nested spans
-    #             # correctly without stopping at the first inner </span>.
-    #             match = re.search(r'<span class="headword">(<b>.*?</b>)</span>', definition)
-    #             if match:
-    #                 headword_content = match.group(1)
-    #                 # Normalize: remove HTML tags and stress marks (ˈ and ˌ)
-    #                 clean_content = re.sub(r'<[^>]+>', '', headword_content)
-    #                 clean_content = re.sub(r'[ˈˌ]', '', clean_content)
-    #                 clean_content = re.sub(r'\(', '', clean_content)
-
-    #                 if dropped_headword not in clean_content:
-    #                     return
-    #             else:
-    #                 return
-
-    #         # (Avoid logging if the exact same duplicate line appears twice in source)
-    #         existing_headword = existing_entry['words'][0]
-    #         if dropped_headword != existing_headword:
-    #             if def_hash not in self.dropped_log:
-    #                 self.dropped_log[def_hash] = []
-    #             if dropped_headword not in self.dropped_log[def_hash]:
-    #                 self.dropped_log[def_hash].append(dropped_headword)
-
-    #         for w in words:
-    #             if w not in existing_entry['words']:
-    #                 existing_entry['words'].append(w)
-    #     else:
-    #         # new entry
-    #         self.seen_hashes[def_hash] = len(self.entries)
-    #         self.entries.append({'words': words, 'definition': definition})
-
     def add(self, words: list[str], definition: str, debug_words=None, is_split_part: bool = False):
-        # ... (hashing logic remains the same) ...
         # Hash the processed definition
         def_hash = hashlib.sha256(definition.encode('utf-8')).hexdigest()
 
@@ -91,7 +29,6 @@ class DuplicateHandler:
             headword_text = ""
             match = re.search(r'<span class="headword"><b>(.*?)</b></span>', definition)
             if match:
-                # remove tags to just get text (e.g. "<b>derring do, derring-do</b>" -> "derring do, derring-do")
                 headword_text = re.sub(r'<[^>]+>', '', match.group(1))
 
             clean_hw = re.sub(r'[ˈˌ]', '', headword_text)
@@ -110,9 +47,6 @@ class DuplicateHandler:
 
             if len(valid_candidates) > 0:
                 # Sort by their first appearance index in the string
-                # e.g. "derring do, derring-do". valid=['derring-do', 'derring do']
-                # find('derring do') = 0, find('derring-do') = 12
-                # Winner is 'derring do'
                 try:
                     valid_candidates.sort(key=lambda w: clean_hw.find(w))
                     winning_word = valid_candidates[0]
@@ -120,7 +54,7 @@ class DuplicateHandler:
                     pass
 
             if winning_word == new_word:
-                # SWAP needed: New word is better suited as primary
+                # Swap needed: New word is better suited as primary
                 dropped_headword = current_primary
 
                 # Reconstruct entry words with new winner at front
