@@ -1,13 +1,14 @@
 import argparse
+import itertools
 import os
+import subprocess
+import shutil
 import sys
 import time
-import shutil
-import itertools
-import subprocess
-from concurrent.futures import ProcessPoolExecutor
 from concurrent.futures import as_completed
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
+from duplicate_handler import DuplicateHandler
 from pathlib import Path
 from processing_worker import process_entry_line_worker
 from pyglossary.glossary_v2 import Glossary
@@ -94,6 +95,8 @@ class DictionaryConverter:
             completed_count = 0
             spinner = itertools.cycle(['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█', '▇', '▆', '▅', '▄', '▃', '▂'])
 
+            redundancy_reaper = DuplicateHandler(self.output_ifo_name)
+
             print("--> Submitting tasks to workers... this might take a few seconds.")
 
             with ProcessPoolExecutor(max_workers=self.workers) as executor:
@@ -112,7 +115,10 @@ class DictionaryConverter:
                                 if self.dump_html and self.debug_words:
                                     print(f"\n\n--> HTML Dump for '{res['words'][0]}':\n{res['definition']}\n")
 
-                                self._create_entry(res['words'], res['definition'])
+                                m = result['metrics']
+                                is_split = m.get('split_entry', 0) > 0
+
+                                redundancy_reaper.add(res['words'], res['definition'], self.debug_words, is_split_part=is_split)
                                 self.unique_headwords.add(res['words'][0])
 
                             m = result['metrics']
@@ -146,6 +152,19 @@ class DictionaryConverter:
 
             # Clear the progress line before printing the final summary
             print("\r" + " " * 80, end='\r')
+
+            print("\n--> Sanity checks and deduplication in progress...")
+
+            if self.dump_html and not self.debug_words:
+                redundancy_reaper.write_log()
+            final_entries = redundancy_reaper.get_entries()
+            u_hashes, d_hashes_count, total_dropped = redundancy_reaper.get_stats()
+            self.metrics['unique_hashes'] = u_hashes
+            self.metrics['duplicated_hashes'] = d_hashes_count
+            self.metrics['total_dropped'] = total_dropped
+
+            for entry in final_entries:
+                self._create_entry(entry['words'], entry['definition'])
 
             print("\n--> Processing complete. Writing Stardict files...")
             self._write_output()
@@ -245,6 +264,9 @@ class DictionaryConverter:
         print(f"- Entries read from source TSV:     {self.metrics['source_entry_count']:,}")
         print(f"- Entries with homographs split:    {self.metrics['split_entry_count']:,}")
         print(f"- Unique headwords processed:       {len(self.unique_headwords):,}")
+        print(f"- Total duplicate entries dropped:  {self.metrics.get('total_dropped', 0):,}")
+        print(f"- Unique definition hashes:         {self.metrics.get('unique_hashes', 0):,}")
+        print(f"- Hashes with duplicates:           {self.metrics.get('duplicated_hashes', 0):,}")
         print(f"- Malformed lines skipped:          {self.metrics['malformed_lines']:,}")
         if self.processing_errors:
             print(f"- Unexpected processing errors:     {len(self.processing_errors):,}")
