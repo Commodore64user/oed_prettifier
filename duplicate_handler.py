@@ -12,7 +12,7 @@ class DuplicateHandler:
     def __init__(self, output_base_name):
         self.output_name = output_base_name
         self.entries = []            # The final list of unique entries
-        self.mismatch_log = []  # list of (word, headword_span)
+        self.mismatch_log = []       # list of (word, headword_span)
         self.seen_hashes = {}        # hash -> index in self.entries
         self.dropped_log = {}        # hash -> list of dropped headwords [word1, word2]
 
@@ -94,8 +94,6 @@ class DuplicateHandler:
     def get_entries(self):
         """Returns the final list of unique, merged entries."""
         result = sorted(self.entries, key=lambda e: (e['words'][0], e['idx']))
-        for e in result:
-            print(f"    [{e['idx']}] {e['words'][0]}")
         return result
 
     def write_log(self):
@@ -138,6 +136,6 @@ class DuplicateHandler:
             print(f"--> Warning: Could not write mismatch log: {e}")
 
     def get_stats(self):
-        """Returns tuple: (unique_hashes_count, entries_with_dupes_count, total_dropped_count)"""
+        """Returns tuple: (unique_hashes_count, entries_with_dupes_count, mismatched_entries, total_dropped_count)"""
         total_dropped = sum(len(drops) for drops in self.dropped_log.values())
         return len(self.seen_hashes), len(self.dropped_log), len(self.mismatch_log), total_dropped
