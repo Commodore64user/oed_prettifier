@@ -1,4 +1,5 @@
 import hashlib
+import html
 import re
 from pathlib import Path
 
@@ -11,12 +12,20 @@ class DuplicateHandler:
     def __init__(self, output_base_name):
         self.output_name = output_base_name
         self.entries = []            # The final list of unique entries
+        self.mismatch_log = []  # list of (word, headword_span)
         self.seen_hashes = {}        # hash -> index in self.entries
         self.dropped_log = {}        # hash -> list of dropped headwords [word1, word2]
 
     def add(self, words: list[str], definition: str, debug_words=None, is_split_part: bool = False):
         # Hash the processed definition
         def_hash = hashlib.sha256(definition.encode('utf-8')).hexdigest()
+        headword_text = ""
+        match = re.search(r'<span class="headword"><b>(.*?)</b></span>', definition)
+        if match:
+            headword_text = html.unescape(re.sub(r'<[^>]+>', '', match.group(1)))
+
+        clean_hw = re.sub(r'[ˈˌ]', '', headword_text)
+        clean_hw = re.sub(r'\(', '', clean_hw)
 
         if def_hash in self.seen_hashes:
             # duplicate found
@@ -26,13 +35,6 @@ class DuplicateHandler:
             new_word = words[0]
             current_primary = existing_entry['words'][0]
 
-            headword_text = ""
-            match = re.search(r'<span class="headword"><b>(.*?)</b></span>', definition)
-            if match:
-                headword_text = re.sub(r'<[^>]+>', '', match.group(1))
-
-            clean_hw = re.sub(r'[ˈˌ]', '', headword_text)
-            clean_hw = re.sub(r'\(', '', clean_hw)
             if is_split_part:
                 if new_word not in clean_hw:
                     return
@@ -47,23 +49,21 @@ class DuplicateHandler:
 
             if len(valid_candidates) > 0:
                 # Sort by their first appearance index in the string
-                try:
-                    valid_candidates.sort(key=lambda w: clean_hw.find(w))
-                    winning_word = valid_candidates[0]
-                except ValueError:
-                    pass
+                valid_candidates.sort(key=lambda w: clean_hw.find(w))
+                winning_word = valid_candidates[0]
 
             if winning_word == new_word:
                 # Swap needed: New word is better suited as primary
                 dropped_headword = current_primary
-
                 # Reconstruct entry words with new winner at front
                 # Create set for unique, but preserve winning_word as 0
                 all_w = set(existing_entry['words'] + words)
                 all_w.discard(winning_word)
                 existing_entry['words'] = [winning_word] + list(all_w)
-            else:
-                # No swap: Current is still best
+                # Push this entry's sort index past the current tail so it sorts after
+                # any entries that were registered before the swap occurred.
+                existing_entry['idx'] = len(self.entries)
+            else: # No swap: Current is still best
                 dropped_headword = new_word
                 for w in words:
                     if w not in existing_entry['words']:
@@ -77,23 +77,31 @@ class DuplicateHandler:
 
             if debug_words:
                 print(f"\n\n--> Duplicated entry found: '{new_word}'")
-                print(f"--> '{dropped_headword}' is a duplicate of: '{winning_word}'")
-                print(f"--> From headword: >> {headword_text} <<")
-
+                print(f"    '{new_word}' is a duplicate of: '{current_primary}'")
+                print(f"    From headword: >> {headword_text} <<")
+                print(f"    Merging '{dropped_headword}' into '{winning_word}'")
         else:
-            # new entry
+            if is_split_part and headword_text and words[0] not in clean_hw:
+                if debug_words:
+                    print(f"\n\n--> Headword mismatch: '{words[0]}' not found in headword span")
+                    print(f"    Headword span: >> {headword_text} <<")
+                    print(f"    Dropping entry before registration")
+                self.mismatch_log.append((words[0], headword_text))
+                return
             self.seen_hashes[def_hash] = len(self.entries)
-            self.entries.append({'words': words, 'definition': definition})
+            self.entries.append({'words': list(words), 'definition': definition, 'idx': len(self.entries)})
 
     def get_entries(self):
         """Returns the final list of unique, merged entries."""
-        return self.entries
+        result = sorted(self.entries, key=lambda e: (e['words'][0], e['idx']))
+        for e in result:
+            print(f"    [{e['idx']}] {e['words'][0]}")
+        return result
 
     def write_log(self):
         """Writes the kept|dropped1|dropped2 log file."""
         if not self.dropped_log:
             return
-
         log_file = Path(self.output_name).parent / f"{Path(self.output_name).name}_dup_log.txt"
         try:
             if log_file.exists():
@@ -113,7 +121,23 @@ class DuplicateHandler:
         except Exception as e:
             print(f"--> Warning: Could not write duplicate log: {e}")
 
+    def write_mismatch_log(self):
+        if not self.mismatch_log:
+            return
+        log_file = Path(self.output_name).parent / f"{Path(self.output_name).name}_mismatch_log.txt"
+        try:
+            if log_file.exists():
+                log_file.unlink()
+
+            with open(log_file, 'w', encoding='utf-8') as lf:
+                for word, headword_span in self.mismatch_log:
+                    lf.write(f"{word}|{headword_span}\n")
+
+            print(f"--> Headword mismatch log written to '{log_file}'.")
+        except Exception as e:
+            print(f"--> Warning: Could not write mismatch log: {e}")
+
     def get_stats(self):
         """Returns tuple: (unique_hashes_count, entries_with_dupes_count, total_dropped_count)"""
         total_dropped = sum(len(drops) for drops in self.dropped_log.values())
-        return len(self.seen_hashes), len(self.dropped_log), total_dropped
+        return len(self.seen_hashes), len(self.dropped_log), len(self.mismatch_log), total_dropped

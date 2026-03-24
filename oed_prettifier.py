@@ -21,6 +21,7 @@ class ConverterConfig:
     workers: int | None
     debug_words: list[str] | None
     dump_html: bool
+    dump_logs: bool
 
 class DictionaryConverter:
     """Orchestrates the conversion from a TSV file to a Stardict dictionary."""
@@ -31,6 +32,7 @@ class DictionaryConverter:
         self.output_ifo_name = config.output_ifo
         self.add_syns = config.add_syns
         self.dump_html = config.dump_html
+        self.dump_logs = config.dump_logs
         self.debug_words = set(config.debug_words) if config.debug_words else None
 
         if self.debug_words:
@@ -155,16 +157,19 @@ class DictionaryConverter:
 
             print("\n--> Sanity checks and deduplication in progress...")
 
-            if self.dump_html and not self.debug_words:
+            if self.dump_logs:
                 redundancy_reaper.write_log()
+                redundancy_reaper.write_mismatch_log()
             final_entries = redundancy_reaper.get_entries()
-            u_hashes, d_hashes_count, total_dropped = redundancy_reaper.get_stats()
+            u_hashes, d_hashes_count, mismatched, total_dropped = redundancy_reaper.get_stats()
             self.metrics['unique_hashes'] = u_hashes
             self.metrics['duplicated_hashes'] = d_hashes_count
+            self.metrics['mismatched'] = mismatched
             self.metrics['total_dropped'] = total_dropped
 
             for entry in final_entries:
                 self._create_entry(entry['words'], entry['definition'])
+                entry['definition'] = None # Clear memory immediately
 
             print("\n--> Processing complete. Writing Stardict files...")
             self._write_output()
@@ -264,7 +269,6 @@ class DictionaryConverter:
         print(f"- Entries read from source TSV:     {self.metrics['source_entry_count']:,}")
         print(f"- Entries with homographs split:    {self.metrics['split_entry_count']:,}")
         print(f"- Unique headwords processed:       {len(self.unique_headwords):,}")
-        print(f"- Total duplicate entries dropped:  {self.metrics.get('total_dropped', 0):,}")
         print(f"- Unique definition hashes:         {self.metrics.get('unique_hashes', 0):,}")
         print(f"- Hashes with duplicates:           {self.metrics.get('duplicated_hashes', 0):,}")
         print(f"- Malformed lines skipped:          {self.metrics['malformed_lines']:,}")
@@ -274,6 +278,8 @@ class DictionaryConverter:
             print(f"- Synonyms added from b-tags:       {self.metrics['synonyms_added_count']:,}")
         print(f"- Words found ending in full stops: {self.metrics['dotted_words']:,}")
         print(f"- Full stops corrected:             {self.metrics['dot_corrected']:,}")
+        print(f"- Total duplicate entries dropped:  {self.metrics.get('total_dropped', 0):,}")
+        print(f"- Total mismatched entries dropped: {self.metrics.get('mismatched', 0):,}")
         print(f"- Total final entries written:      {self.metrics['final_entry_count']:,}")
         print(f"- Total execution time:             {int(minutes):02d}:{int(seconds):02d}")
         print("----------------------------------------------------\n")
@@ -297,6 +303,7 @@ if __name__ == "__main__":
     parser.add_argument("--workers", type=int, default=None, help="Number of worker processes to use. Defaults to the number of system cores minus one.")
     parser.add_argument("--debug", nargs='+', help="Run the script only for the specified headword(s) to speed up testing.")
     parser.add_argument("-d", "--dump", action="store_true", help="When used with --debug, prints the final HTML of the processed entry to the console.")
+    parser.add_argument("--dump-logs", action="store_true", help="Writes duplication audit logs.")
     args = parser.parse_args()
 
     # Create the config object
@@ -306,7 +313,8 @@ if __name__ == "__main__":
         add_syns=args.add_syns,
         workers=args.workers,
         debug_words=args.debug,
-        dump_html=args.dump
+        dump_html=args.dump,
+        dump_logs=args.dump_logs
     )
 
     converter = DictionaryConverter(config)
