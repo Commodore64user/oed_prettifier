@@ -39,17 +39,27 @@ class DuplicateHandler:
                 if new_word not in clean_hw:
                     return
 
-            # We check position of both valid candidates in the headword text
-            # If both are present, the one with the lower index wins.
             candidates = [current_primary, new_word]
             # Filter candidates that are actually in the text
-            valid_candidates = [c for c in candidates if c in clean_hw]
+            valid_candidates = [c for c in candidates if
+                re.search(rf'(?<![a-zA-Z]){re.escape(c)}(?![a-zA-Z])', clean_hw) or
+                re.search(rf'(?<![a-zA-Z]){re.escape(c)}\(', headword_text)]
 
             winning_word = current_primary # Default to keeping current if uncertain
 
             if len(valid_candidates) > 0:
-                # Sort by their first appearance index in the string
-                valid_candidates.sort(key=lambda w: clean_hw.find(w))
+                def sort_key(w):
+                    # Pecking order:
+                    #     1. Whoever appears earliest in the headword wins
+                    #     2. If tied on position, a clean standalone word beats one that only exists as a parenthetical root
+                    #     3. If still tied, the longer word wins
+                    pos = clean_hw.find(w)
+                    paren_only = int(
+                        not re.search(rf'(?<![a-zA-Z]){re.escape(w)}(?![a-zA-Z])', clean_hw)
+                        and re.search(rf'(?<![a-zA-Z]){re.escape(w)}\(', headword_text) is not None
+                    )
+                    return (pos, paren_only, -len(w))
+                valid_candidates.sort(key=sort_key)
                 winning_word = valid_candidates[0]
 
             if winning_word == new_word:
@@ -96,44 +106,30 @@ class DuplicateHandler:
         result = sorted(self.entries, key=lambda e: (e['words'][0], e['idx']))
         return result
 
-    def write_log(self):
-        """Writes the kept|dropped1|dropped2 log file."""
-        if not self.dropped_log:
-            return
-        log_file = Path(self.output_name).parent / f"{Path(self.output_name).name}_dup_log.txt"
+    def write_logs(self):
+        """Writes the kept|dropped log and the headword mismatch log."""
+        self._write_log_file(
+            f"{Path(self.output_name).name}_dup_log.txt",
+            (f"{self.entries[self.seen_hashes[h]]['words'][0]}|{'|'.join(d)}\n"
+            for h, d in self.dropped_log.items()),
+            "Duplicate entries log",
+        )
+        self._write_log_file(
+            f"{Path(self.output_name).name}_mismatch_log.txt",
+            (f"{w}|{s}\n" for w, s in self.mismatch_log),
+            "Headword mismatch log",
+        )
+
+    def _write_log_file(self, filename, lines, label):
+        log_file = Path(self.output_name).parent / filename
         try:
             if log_file.exists():
                 log_file.unlink()
-
             with open(log_file, 'w', encoding='utf-8') as lf:
-                for def_hash, dropped_list in self.dropped_log.items():
-                    # Find the kept word for this hash
-                    idx = self.seen_hashes[def_hash]
-                    kept_word = self.entries[idx]['words'][0]
-
-                    # Format: kept|dropped1|dropped2
-                    line_str = f"{kept_word}|{'|'.join(dropped_list)}\n"
-                    lf.write(line_str)
-
-            print(f"--> Duplicate entries log written to '{log_file}'.")
+                lf.writelines(lines)
+            print(f"--> {label} written to '{log_file}'.")
         except Exception as e:
-            print(f"--> Warning: Could not write duplicate log: {e}")
-
-    def write_mismatch_log(self):
-        if not self.mismatch_log:
-            return
-        log_file = Path(self.output_name).parent / f"{Path(self.output_name).name}_mismatch_log.txt"
-        try:
-            if log_file.exists():
-                log_file.unlink()
-
-            with open(log_file, 'w', encoding='utf-8') as lf:
-                for word, headword_span in self.mismatch_log:
-                    lf.write(f"{word}|{headword_span}\n")
-
-            print(f"--> Headword mismatch log written to '{log_file}'.")
-        except Exception as e:
-            print(f"--> Warning: Could not write mismatch log: {e}")
+            print(f"--> Warning: Could not write {label.lower()}: {e}")
 
     def get_stats(self):
         """Returns tuple: (unique_hashes_count, entries_with_dupes_count, mismatched_entries, total_dropped_count)"""
