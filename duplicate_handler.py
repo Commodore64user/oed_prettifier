@@ -35,9 +35,13 @@ class DuplicateHandler:
             new_word = words[0]
             current_primary = existing_entry['words'][0]
 
-            if is_split_part:
-                if new_word not in clean_hw:
-                    return
+            if is_split_part and new_word not in clean_hw:
+                if debug_words:
+                    print(f"\n\n--> Headword mismatch: '{new_word}' not found in headword span")
+                    print(f"    Headword span: >> {headword_text} <<")
+                    print(f"    Dropping duplicate before merge")
+                self.mismatch_log.append((new_word, headword_text))
+                return
 
             candidates = [current_primary, new_word]
             # Filter candidates that are actually in the text
@@ -133,5 +137,5 @@ class DuplicateHandler:
 
     def get_stats(self):
         """Returns tuple: (unique_hashes_count, entries_with_dupes_count, mismatched_entries, total_dropped_count)"""
-        total_dropped = sum(len(drops) for drops in self.dropped_log.values())
+        total_dropped = sum(len(drops) for drops in self.dropped_log.values()) + len(self.mismatch_log)
         return len(self.seen_hashes), len(self.dropped_log), len(self.mismatch_log), total_dropped
