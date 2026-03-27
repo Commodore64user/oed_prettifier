@@ -25,7 +25,9 @@ class DuplicateHandler:
             headword_text = html.unescape(re.sub(r'<[^>]+>', '', match.group(1)))
 
         clean_hw = re.sub(r'[ˈˌ]', '', headword_text)
-        clean_hw = re.sub(r'\(', '', clean_hw)
+        hw_forms = self._expand_parens(clean_hw)      # expand balanced parens first
+        hw_forms = [re.sub(r'\(', '', f) for f in hw_forms]  # then strip bare opening parens
+        clean_hw_base = re.sub(r'\([^)]*\)', '', clean_hw)  # † eyrer, ey(e)rer
 
         if def_hash in self.seen_hashes:
             # duplicate found
@@ -35,7 +37,7 @@ class DuplicateHandler:
             new_word = words[0]
             current_primary = existing_entry['words'][0]
 
-            if is_split_part and new_word not in clean_hw:
+            if is_split_part and not any(new_word in form for form in hw_forms):
                 if debug_words:
                     print(f"\n\n--> Headword mismatch: '{new_word}' not found in headword span")
                     print(f"    Headword span: >> {headword_text} <<")
@@ -46,24 +48,47 @@ class DuplicateHandler:
             candidates = [current_primary, new_word]
             # Filter candidates that are actually in the text
             valid_candidates = [c for c in candidates if
-                re.search(rf'(?<![a-zA-Z]){re.escape(c)}(?![a-zA-Z])', clean_hw) or
-                re.search(rf'(?<![a-zA-Z]){re.escape(c)}\(', headword_text)]
+                any(re.search(rf'(?<![a-zA-Z]){re.escape(c)}(?![a-zA-Z])', form) for form in hw_forms) or
+                re.search(rf'(?<![a-zA-Z]){re.escape(c)}\(', clean_hw)]
 
             winning_word = current_primary # Default to keeping current if uncertain
 
-            if len(valid_candidates) > 0:
+            if valid_candidates:
                 def sort_key(w):
-                    # Pecking order:
-                    #     1. Whoever appears earliest in the headword wins
-                    #     2. If tied on position, a clean standalone word beats one that only exists as a parenthetical root
-                    #     3. If still tied, the longer word wins
-                    pos = clean_hw.find(w)
-                    paren_only = int(
-                        not re.search(rf'(?<![a-zA-Z]){re.escape(w)}(?![a-zA-Z])', clean_hw)
-                        and re.search(rf'(?<![a-zA-Z]){re.escape(w)}\(', headword_text) is not None
-                    )
-                    return (pos, paren_only, -len(w))
+                    """
+                    Calculates sorting criteria and metadata for a candidate word.
+                    Pecking order:
+                        1. Whoever appears earliest in the headword wins
+                        2. Words that only exist by virtue of expanding a parenthetical form yield
+                        3. If tied on position, a clean standalone word beats one that only exists as a parenthetical root
+                        4. If still tied, the longer word wins
+                    """
+                    # Look for the earliest occurrence across all forms
+                    occurrences = [form.find(w) for form in hw_forms if w in form]
+                    pos = min(occurrences) if occurrences else len(clean_hw_base)
+
+                    # Boundary-aware regex to check for standalone existence
+                    pattern = rf'(?<![a-zA-Z]){re.escape(w)}(?![a-zA-Z])'
+
+                    in_base = bool(re.search(pattern, clean_hw_base))
+                    in_any_form = any(re.search(pattern, form) for form in hw_forms)
+
+                    expanded_only = int(not in_base and in_any_form)
+                    paren_only = int(not in_any_form and re.search(rf'(?<![a-zA-Z]){re.escape(w)}\(', headword_text) is not None)
+
+                    return (pos, expanded_only, paren_only, -len(w))
+
+                # Sort using the metadata tuple
                 valid_candidates.sort(key=sort_key)
+
+                if debug_words:
+                    print(f"\n\n--> Duplicated entry found: '{new_word}'")
+                    print(f"    hw_forms: {hw_forms}")
+                    print(f"    candidates: {valid_candidates}")
+                    for w in valid_candidates:
+                        pos, exp_only, par_only, neg_len = sort_key(w)
+                        print(f"        * '{w}': pos={pos}, expanded_only={exp_only}, paren_only={par_only}, len={-neg_len}")
+
                 winning_word = valid_candidates[0]
 
             if winning_word == new_word:
@@ -90,12 +115,12 @@ class DuplicateHandler:
                     self.dropped_log[def_hash].append(dropped_headword)
 
             if debug_words:
-                print(f"\n\n--> Duplicated entry found: '{new_word}'")
+                # print(f"\n\n--> Duplicated entry found: '{new_word}'")
                 print(f"    '{new_word}' is a duplicate of: '{current_primary}'")
                 print(f"    From headword: >> {headword_text} <<")
                 print(f"    Merging '{dropped_headword}' into '{winning_word}'")
         else:
-            if is_split_part and headword_text and words[0] not in clean_hw:
+            if is_split_part and not any(words[0] in form for form in hw_forms):
                 if debug_words:
                     print(f"\n\n--> Headword mismatch: '{words[0]}' not found in headword span")
                     print(f"    Headword span: >> {headword_text} <<")
@@ -104,6 +129,19 @@ class DuplicateHandler:
                 return
             self.seen_hashes[def_hash] = len(self.entries)
             self.entries.append({'words': list(words), 'definition': definition, 'idx': len(self.entries)})
+
+    def _expand_parens(self, text):
+        """Expand 'ey(e)rer' into ['eyrer', 'eyerer']."""
+        results = [text]
+        for m in re.finditer(r'\(([^)]+)\)', text):
+            results = [
+                r.replace(m.group(0), '', 1)      # without paren content
+                for r in results
+            ] + [
+                r.replace(m.group(0), m.group(1), 1)  # with paren content
+                for r in results
+            ]
+        return results
 
     def get_entries(self):
         """Returns the final list of unique, merged entries."""
