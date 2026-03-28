@@ -141,10 +141,15 @@ class DuplicateHandler:
             ]
         return results
 
-    def get_entries(self):
-        """Returns the final list of unique, merged entries."""
-        result = sorted(self.entries, key=lambda e: (e['words'][0], e['idx']))
-        return [{'words': e['words'], 'definition': e['definition']} for e in result]
+    def drain(self):
+        """Yield entries in sorted order, clearing as we go."""
+        for entry in sorted(self.entries, key=lambda e: (e['words'][0], e['idx'])):
+            yield {'words': entry['words'], 'definition': entry['definition']}
+            entry['definition'] = None
+        self.entries.clear()
+        self.seen_hashes.clear()
+        self.dropped_log.clear()
+        self.mismatch_log.clear()
 
     def write_logs(self):
         if self.dropped_log:

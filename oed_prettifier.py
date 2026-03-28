@@ -159,16 +159,14 @@ class DictionaryConverter:
 
             if self.dump_logs:
                 redundancy_reaper.write_logs()
-            final_entries = redundancy_reaper.get_entries()
             u_hashes, d_hashes_count, mismatched, total_dropped = redundancy_reaper.get_stats()
             self.metrics['unique_hashes'] = u_hashes
             self.metrics['duplicated_hashes'] = d_hashes_count
             self.metrics['mismatched'] = mismatched
             self.metrics['total_dropped'] = total_dropped
 
-            for entry in final_entries:
+            for entry in redundancy_reaper.drain():
                 self._create_entry(entry['words'], entry['definition'])
-                entry['definition'] = None # Clear memory immediately
 
             print("\n--> Processing complete. Writing Stardict files...")
             self._write_output()
