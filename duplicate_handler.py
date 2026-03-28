@@ -17,17 +17,28 @@ class DuplicateHandler:
         self.dropped_log = {}        # hash -> list of dropped headwords [word1, word2]
 
     def add(self, words: list[str], definition: str, debug_words=None, is_split_part: bool = False):
-        # Hash the processed definition
-        def_hash = hashlib.sha256(definition.encode('utf-8')).hexdigest()
         headword_text = ""
         match = re.search(r'<span class="headword"><b>(.*?)</b></span>', definition)
         if match:
             headword_text = html.unescape(re.sub(r'<[^>]+>', '', match.group(1)))
 
+        # clean_hw retains bare opening parens (e.g. 'hois(s') intentionally
+        # paren_only relies on this to detect words that only exist as parenthetical roots.
         clean_hw = re.sub(r'[ˈˌ]', '', headword_text)
         hw_forms = self._expand_parens(clean_hw)      # expand balanced parens first
         hw_forms = [re.sub(r'\(', '', f) for f in hw_forms]  # then strip bare opening parens
-        clean_hw_base = re.sub(r'\([^)]*\)', '', clean_hw)  # † eyrer, ey(e)rer
+        clean_hw_base = re.sub(r'\([^)]*\)', '', clean_hw)  # e.g. '† ey(e)rer' → '† eyrer'
+
+        if is_split_part and headword_text and not any(words[0] in form for form in hw_forms):
+            if debug_words:
+                print(f"\n\n--> Headword mismatch: '{words[0]}' not found in headword span")
+                print(f"    Headword span: >> {headword_text} <<")
+                print(f"    Dropping entry before registration")
+            self.mismatch_log.append((words[0], headword_text))
+            return
+
+        # Hash the processed definition
+        def_hash = hashlib.sha256(definition.encode('utf-8')).hexdigest()
 
         if def_hash in self.seen_hashes:
             # duplicate found
@@ -37,14 +48,6 @@ class DuplicateHandler:
             new_word = words[0]
             current_primary = existing_entry['words'][0]
 
-            if is_split_part and not any(new_word in form for form in hw_forms):
-                if debug_words:
-                    print(f"\n\n--> Headword mismatch: '{new_word}' not found in headword span")
-                    print(f"    Headword span: >> {headword_text} <<")
-                    print(f"    Dropping duplicate before merge")
-                self.mismatch_log.append((new_word, headword_text))
-                return
-
             candidates = [current_primary, new_word]
             # Filter candidates that are actually in the text
             valid_candidates = [c for c in candidates if
@@ -52,6 +55,9 @@ class DuplicateHandler:
                 re.search(rf'(?<![a-zA-Z]){re.escape(c)}\(', clean_hw)]
 
             winning_word = current_primary # Default to keeping current if uncertain
+
+            if debug_words:
+                print(f"\n\n--> Duplicated entry found: '{new_word}'")
 
             if valid_candidates:
                 def sort_key(w):
@@ -74,7 +80,7 @@ class DuplicateHandler:
                     in_any_form = any(re.search(pattern, form) for form in hw_forms)
 
                     expanded_only = int(not in_base and in_any_form)
-                    paren_only = int(not in_any_form and re.search(rf'(?<![a-zA-Z]){re.escape(w)}\(', headword_text) is not None)
+                    paren_only = int(not in_any_form and re.search(rf'(?<![a-zA-Z]){re.escape(w)}\(', clean_hw) is not None)
 
                     return (pos, expanded_only, paren_only, -len(w))
 
@@ -82,7 +88,6 @@ class DuplicateHandler:
                 valid_candidates.sort(key=sort_key)
 
                 if debug_words:
-                    print(f"\n\n--> Duplicated entry found: '{new_word}'")
                     print(f"    hw_forms: {hw_forms}")
                     print(f"    candidates: {valid_candidates}")
                     for w in valid_candidates:
@@ -120,13 +125,6 @@ class DuplicateHandler:
                 print(f"    From headword: >> {headword_text} <<")
                 print(f"    Merging '{dropped_headword}' into '{winning_word}'")
         else:
-            if is_split_part and not any(words[0] in form for form in hw_forms):
-                if debug_words:
-                    print(f"\n\n--> Headword mismatch: '{words[0]}' not found in headword span")
-                    print(f"    Headword span: >> {headword_text} <<")
-                    print(f"    Dropping entry before registration")
-                self.mismatch_log.append((words[0], headword_text))
-                return
             self.seen_hashes[def_hash] = len(self.entries)
             self.entries.append({'words': list(words), 'definition': definition, 'idx': len(self.entries)})
 
@@ -146,25 +144,27 @@ class DuplicateHandler:
     def get_entries(self):
         """Returns the final list of unique, merged entries."""
         result = sorted(self.entries, key=lambda e: (e['words'][0], e['idx']))
-        return result
+        return [{'words': e['words'], 'definition': e['definition']} for e in result]
 
     def write_logs(self):
-        """Writes the kept|dropped log and the headword mismatch log."""
-        self._write_log_file(
-            f"{Path(self.output_name).name}_dup_log.txt",
-            (f"{self.entries[self.seen_hashes[h]]['words'][0]}|{'|'.join(d)}\n"
-            for h, d in self.dropped_log.items()),
-            "Duplicate entries log",
-        )
-        self._write_log_file(
-            f"{Path(self.output_name).name}_mismatch_log.txt",
-            (f"{w}|{s}\n" for w, s in self.mismatch_log),
-            "Headword mismatch log",
-        )
+        if self.dropped_log:
+            self._write_log_file(
+                f"{Path(self.output_name).name}_dup_log.txt",
+                (f"{self.entries[self.seen_hashes[h]]['words'][0]}|{'|'.join(d)}\n"
+                for h, d in self.dropped_log.items()),
+                "Duplicate entries log",
+            )
+        if self.mismatch_log:
+            self._write_log_file(
+                f"{Path(self.output_name).name}_mismatch_log.txt",
+                (f"{w}|{s}\n" for w, s in self.mismatch_log),
+                "Headword mismatch log",
+            )
 
     def _write_log_file(self, filename, lines, label):
         log_file = Path(self.output_name).parent / filename
         try:
+            log_file.parent.mkdir(parents=True, exist_ok=True)
             if log_file.exists():
                 log_file.unlink()
             with open(log_file, 'w', encoding='utf-8') as lf:
