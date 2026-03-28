@@ -51,8 +51,8 @@ class DuplicateHandler:
             candidates = [current_primary, new_word]
             # Filter candidates that are actually in the text
             valid_candidates = [c for c in candidates if
-                any(re.search(rf'(?<![a-zA-Z]){re.escape(c)}(?![a-zA-Z])', form) for form in hw_forms) or
-                re.search(rf'(?<![a-zA-Z]){re.escape(c)}\(', clean_hw)]
+                any(re.search(rf'(?<!\w){re.escape(c)}(?!\w)', form) for form in hw_forms) or
+                re.search(rf'(?<!\w){re.escape(c)}\(', clean_hw)]
 
             winning_word = current_primary # Default to keeping current if uncertain
 
@@ -74,13 +74,13 @@ class DuplicateHandler:
                     pos = min(occurrences) if occurrences else len(clean_hw_base)
 
                     # Boundary-aware regex to check for standalone existence
-                    pattern = rf'(?<![a-zA-Z]){re.escape(w)}(?![a-zA-Z])'
+                    pattern = rf'(?<!\w){re.escape(w)}(?!\w)'
 
                     in_base = bool(re.search(pattern, clean_hw_base))
                     in_any_form = any(re.search(pattern, form) for form in hw_forms)
 
                     expanded_only = int(not in_base and in_any_form)
-                    paren_only = int(not in_any_form and re.search(rf'(?<![a-zA-Z]){re.escape(w)}\(', clean_hw) is not None)
+                    paren_only = int(not in_any_form and re.search(rf'(?<!\w){re.escape(w)}\(', clean_hw) is not None)
 
                     return (pos, expanded_only, paren_only, -len(w))
 
