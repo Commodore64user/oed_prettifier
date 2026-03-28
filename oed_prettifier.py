@@ -275,7 +275,7 @@ class DictionaryConverter:
         print(f"- Words found ending in full stops: {self.metrics['dotted_words']:,}")
         print(f"- Full stops corrected:             {self.metrics['dot_corrected']:,}")
         print(f"- Hashes with duplicates:           {self.metrics.get('duplicated_hashes', 0):,}")
-        print(f"- Mismatched entries dropped: {self.metrics.get('mismatched', 0):,}")
+        print(f"- Mismatched entries dropped:       {self.metrics.get('mismatched', 0):,}")
         print(f"- Total entries dropped:            {self.metrics.get('total_dropped', 0):,}")
         print(f"- Total final entries written:      {self.metrics['final_entry_count']:,}")
         print(f"- Total execution time:             {int(minutes):02d}:{int(seconds):02d}")
