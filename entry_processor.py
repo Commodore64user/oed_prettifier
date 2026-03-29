@@ -68,7 +68,6 @@ class EntryProcessor:
         html = re.sub(r'\\t\\n', ' ', html)
         html = re.sub(r'\\n', ' ', html)
         html = re.sub(r'\\t', ' ', html)
-        html = re.sub(r'\s+', ' ', html)
         html = re.sub(r'(</b>|/)(\[)', r'\1 \2', html)
         if self.headword.endswith('.'):
             html = html.replace('<abr>', '', 1)
@@ -624,6 +623,7 @@ class EntryProcessor:
         html = re.sub(r'<span class="translator">tr.</span>', '<abr>tr.</abr>', html)
         html = html.replace('<abr>', '<span class="abbreviation">')
         html = html.replace('</abr>', '</span>')
+        html = re.sub(r'\s+', ' ', html)
 
         # this final step is for testing purposes only, to make spotting these much easier
         html = re.sub(r'\{([^\s{}]+)\}', r'<span class="unprocessed">{\1}</span>', html)
