@@ -65,6 +65,7 @@ class EntryProcessor:
         """Runs the full suite of cleaning and formatting operations on the HTML."""
         html = self.html
         html = re.sub(r'<img[^>]+>', '', html)
+        html = re.sub(r'\\t\\n', ' ', html)
         html = re.sub(r'\\n', ' ', html)
         html = re.sub(r'\\t', ' ', html)
         html = re.sub(r'(</b>|/)(\[)', r'\1 \2', html)
