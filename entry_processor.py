@@ -384,7 +384,7 @@ class EntryProcessor:
         # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
         html = re.sub(r'\u2013 ([,;\.])', f'– <b>{html_module.escape(self.headword)}</b>' + r'\1', html)
         html = re.sub(r'(\d)\u2013  \(', r'\1' + f'– <b>{html_module.escape(self.headword)}</b> (', html) #hois
-        html = re.sub(r'([0-9]) ([,;\.])', r'\1' + f' <b>{html_module.escape(self.headword)}</b>' + r'\2', html)
+        html = re.sub(r'([0-9]) ([,;:\.])', r'\1' + f' <b>{html_module.escape(self.headword)}</b>' + r'\2', html)
         html = re.sub(r'Also ([\. ])', f'Also <b>{html_module.escape(self.headword)}</b>' + r'\1', html)
         # html = re.sub(r'\u2013 ([,;\.])', f'– <b>{html_module.escape(self.headword)}</b>' + r'\1', html) TODO # I forgot which headword it was
         def replace_breve(match):
