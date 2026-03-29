@@ -152,7 +152,7 @@ class DuplicateHandler:
         self.dropped_log.clear()
         self.mismatch_log.clear()
 
-    def quarentine_trial(self, debug_words=None):
+    def quarantine_trial(self, debug_words=None):
         """Trial for quarantined entries — run after all adds, before drain."""
         for (def_hash, _), (words, definition, headword_text) in self.quarantine.items():
             if def_hash in self.seen_hashes:
