@@ -113,17 +113,15 @@ class DictionaryConverter:
                     try:
                         result = future.result()
                         if result['status'] == 'ok':
+                            m = result['metrics']
+                            is_split = m.get('split_entry', 0) > 0
                             for res in result['results']:
                                 if self.dump_html and self.debug_words:
                                     print(f"\n\n--> HTML Dump for '{res['words'][0]}':\n{res['definition']}\n")
 
-                                m = result['metrics']
-                                is_split = m.get('split_entry', 0) > 0
-
                                 redundancy_reaper.add(res['words'], res['definition'], self.debug_words, is_split_part=is_split)
                                 self.unique_headwords.add(res['words'][0])
 
-                            m = result['metrics']
                             self.metrics['source_entry_count'] += m['source_entry']
                             self.metrics['split_entry_count'] += m['split_entry']
                             self.metrics['dotted_words'] += m['dotted_words']
