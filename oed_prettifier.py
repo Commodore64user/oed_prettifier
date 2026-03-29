@@ -157,6 +157,7 @@ class DictionaryConverter:
 
             print("\n--> Sanity checks and deduplication in progress...")
 
+            redundancy_reaper.quarentine_trial(self.debug_words)
             if self.dump_logs:
                 redundancy_reaper.write_logs()
             u_hashes, d_hashes_count, mismatched, total_dropped = redundancy_reaper.get_stats()

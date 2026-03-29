@@ -15,6 +15,7 @@ class DuplicateHandler:
         self.mismatch_log = []       # list of (word, headword_span)
         self.seen_hashes = {}        # hash -> index in self.entries
         self.dropped_log = {}        # hash -> list of dropped headwords [word1, word2]
+        self.quarantine = {}         # def_hash -> (words, definition, headword_text)
 
     def add(self, words: list[str], definition: str, debug_words=None, is_split_part: bool = False):
         headword_text = ""
@@ -29,16 +30,16 @@ class DuplicateHandler:
         hw_forms = [re.sub(r'\(', '', f) for f in hw_forms]  # then strip bare opening parens
         clean_hw_base = re.sub(r'\([^)]*\)', '', clean_hw)  # e.g. '† ey(e)rer' → '† eyrer'
 
+        # Hash the processed definition
+        def_hash = hashlib.sha256(definition.encode('utf-8')).hexdigest()
+
         if is_split_part and headword_text and not any(words[0] in form for form in hw_forms):
             if debug_words:
                 print(f"\n\n--> Headword mismatch: '{words[0]}' not found in headword span")
                 print(f"    Headword span: >> {headword_text} <<")
-                print(f"    Dropping entry before registration")
-            self.mismatch_log.append((words[0], headword_text))
+                print(f"    Quarantining entry pending duplicate check")
+            self.quarantine[def_hash] = (words, definition, headword_text)
             return
-
-        # Hash the processed definition
-        def_hash = hashlib.sha256(definition.encode('utf-8')).hexdigest()
 
         if def_hash in self.seen_hashes:
             # duplicate found
@@ -120,7 +121,6 @@ class DuplicateHandler:
                     self.dropped_log[def_hash].append(dropped_headword)
 
             if debug_words:
-                # print(f"\n\n--> Duplicated entry found: '{new_word}'")
                 print(f"    '{new_word}' is a duplicate of: '{current_primary}'")
                 print(f"    From headword: >> {headword_text} <<")
                 print(f"    Merging '{dropped_headword}' into '{winning_word}'")
@@ -150,6 +150,21 @@ class DuplicateHandler:
         self.seen_hashes.clear()
         self.dropped_log.clear()
         self.mismatch_log.clear()
+
+    def quarentine_trial(self, debug_words=None):
+        """Trial for quarantined entries — run after all adds, before drain."""
+        for def_hash, (words, definition, headword_text) in self.quarantine.items():
+            if def_hash in self.seen_hashes:
+                if debug_words:
+                    print(f"\n    Quarantine trial: '{words[0]}' confirmed duplicate — sending to Gaol")
+                    print(f"     Headword span: >> {headword_text} <<")
+                self.mismatch_log.append((words[0], headword_text))
+            else:
+                if debug_words:
+                    print(f"\n    Quarantine trial: '{words[0]}' not a duplicate — reinstating")
+                    print(f"     Headword span: >> {headword_text} <<")
+                self.entries.append({'words': list(words), 'definition': definition, 'idx': len(self.entries)})
+        self.quarantine.clear()
 
     def write_logs(self):
         if self.dropped_log:
