@@ -1,5 +1,6 @@
 import argparse
 import itertools
+import logging
 import os
 import subprocess
 import shutil
@@ -52,6 +53,15 @@ class DictionaryConverter:
         self.unique_headwords = set()
         Glossary.init()
         self.glos = Glossary()
+
+        pyg_log = logging.getLogger("pyglossary")
+        if self.debug_words:
+            pyg_log.setLevel(logging.DEBUG)
+        else:
+            pyg_log.setLevel(logging.INFO)
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+        pyg_log.addHandler(handler)
 
     def _create_entry(self, all_words: list[str], final_definition: str):
         """Helper function to create a glossary entry from processed data."""
@@ -167,7 +177,7 @@ class DictionaryConverter:
             for entry in redundancy_reaper.drain():
                 self._create_entry(entry['words'], entry['definition'])
 
-            print("\n--> Processing complete. Writing Stardict files...")
+            print("\n--> Processing complete. Writing Stardict files...\n")
             self._write_output()
             self._print_summary()
         except Exception as e:
