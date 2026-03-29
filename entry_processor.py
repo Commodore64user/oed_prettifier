@@ -68,6 +68,7 @@ class EntryProcessor:
         html = re.sub(r'\\t\\n', ' ', html)
         html = re.sub(r'\\n', ' ', html)
         html = re.sub(r'\\t', ' ', html)
+        html = re.sub(r'\s+', ' ', html)
         html = re.sub(r'(</b>|/)(\[)', r'\1 \2', html)
         if self.headword.endswith('.'):
             html = html.replace('<abr>', '', 1)
@@ -264,6 +265,7 @@ class EntryProcessor:
         html = html.replace('{pcnt}', '%')
         html = html.replace('{cprt}', '©') # copyright
         html = html.replace('{hash}', '#')
+        html = html.replace('{at}', '@')
         html = html.replace('{cross}', '✠')
         html = html.replace('{fatpara}', '\'¶\'') # liberty taken here, the qoutes should differedntiate it from one used by OED
         html = html.replace('{revsc}', '\u061B') # reverse semi-colon
@@ -382,7 +384,9 @@ class EntryProcessor:
         html = re.sub(r'⊇', 'e', html)
         # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
         html = re.sub(r'\u2013 ([,;\.])', f'– <b>{html_module.escape(self.headword)}</b>' + r'\1', html)
+        html = re.sub(r'(\d)\u2013  \(', r'\1' + f'– <b>{html_module.escape(self.headword)}</b> (', html) #hois
         html = re.sub(r'([0-9]) ([,;\.])', r'\1' + f' <b>{html_module.escape(self.headword)}</b>' + r'\2', html)
+        html = re.sub(r'Also ([\. ])', f'Also <b>{html_module.escape(self.headword)}</b>' + r'\1', html)
         # html = re.sub(r'\u2013 ([,;\.])', f'– <b>{html_module.escape(self.headword)}</b>' + r'\1', html) TODO # I forgot which headword it was
         def replace_breve(match):
             letter = match.group(1)
