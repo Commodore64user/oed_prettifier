@@ -204,6 +204,12 @@ class DictionaryConverter:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # And back to Stradict we go!
+        # self.glos.setInfo("sourceLang", "English")
+        # self.glos.setInfo("targetLang", "English")
+        self.glos.setInfo("author",    "Oxford University Press")
+        self.glos.setInfo("copyright", "© 1989 Oxford University Press")
+        self.glos.setInfo("website", "https://www.oed.com")
+        self.glos.setInfo("email", "")
         if self.debug_words:
             self.glos.setInfo("title", "debug OED")
         self.glos.setInfo("description", "This dictionary was created using Commodore64user's oed_prettifier, if you encounter any formatting issues, do not hesitate to report them " \
