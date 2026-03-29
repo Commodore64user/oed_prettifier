@@ -13,9 +13,10 @@ class DuplicateHandler:
         self.output_name = output_base_name
         self.entries = []            # The final list of unique entries
         self.mismatch_log = []       # list of (word, headword_span)
+        self.reinstated_log = []
         self.seen_hashes = {}        # hash -> index in self.entries
         self.dropped_log = {}        # hash -> list of dropped headwords [word1, word2]
-        self.quarantine = {}         # def_hash -> (words, definition, headword_text)
+        self.quarantine = {}         # (def_hash, word) -> (words, definition, headword_text)
 
     def add(self, words: list[str], definition: str, debug_words=None, is_split_part: bool = False):
         headword_text = ""
@@ -38,7 +39,7 @@ class DuplicateHandler:
                 print(f"\n\n--> Headword mismatch: '{words[0]}' not found in headword span")
                 print(f"    Headword span: >> {headword_text} <<")
                 print(f"    Quarantining entry pending duplicate check")
-            self.quarantine[def_hash] = (words, definition, headword_text)
+            self.quarantine[(def_hash, words[0])] = (words, definition, headword_text)
             return
 
         if def_hash in self.seen_hashes:
@@ -153,7 +154,7 @@ class DuplicateHandler:
 
     def quarentine_trial(self, debug_words=None):
         """Trial for quarantined entries — run after all adds, before drain."""
-        for def_hash, (words, definition, headword_text) in self.quarantine.items():
+        for (def_hash, _), (words, definition, headword_text) in self.quarantine.items():
             if def_hash in self.seen_hashes:
                 if debug_words:
                     print(f"\n    Quarantine trial: '{words[0]}' confirmed duplicate — sending to Gaol")
@@ -164,6 +165,7 @@ class DuplicateHandler:
                     print(f"\n    Quarantine trial: '{words[0]}' not a duplicate — reinstating")
                     print(f"     Headword span: >> {headword_text} <<")
                 self.entries.append({'words': list(words), 'definition': definition, 'idx': len(self.entries)})
+                self.reinstated_log.append((words[0], headword_text))
         self.quarantine.clear()
 
     def write_logs(self):
@@ -179,6 +181,12 @@ class DuplicateHandler:
                 f"{Path(self.output_name).name}_mismatch_log.txt",
                 (f"{w}|{s}\n" for w, s in self.mismatch_log),
                 "Headword mismatch log",
+            )
+        if self.reinstated_log:
+            self._write_log_file(
+                f"{Path(self.output_name).name}_reinstated_log.txt",
+                (f"{w}|{s}\n" for w, s in self.reinstated_log),
+                "Reinstated entries log",
             )
 
     def _write_log_file(self, filename, lines, label):
