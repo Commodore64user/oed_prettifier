@@ -190,6 +190,8 @@ def process_entry_line_worker(line_tuple: tuple[str, bool, set[str] | None]) -> 
                 # some entries (see "gen") need some space
                 final_definition = final_definition.replace(headword_div, headword_div + ' ', 1)
 
+            final_definition = re.sub(r'<blockquote>(<span class="headword"><b>.*?</b></span>)</blockquote>', r'\1', final_definition)
+
             final_entry = finalise_entry(entry_word_base, final_definition, add_syns, debug_words)
             processed_results.append(final_entry)
             metrics['synonyms_added'] += final_entry['syn_count']
