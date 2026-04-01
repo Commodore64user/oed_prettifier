@@ -168,6 +168,8 @@ def process_entry_line_worker(line_tuple: tuple[str, bool, set[str] | None]) -> 
                         headword_b_tag = f' <span class="headword"><b>{word}</b></span>'
                         final_definition = processed_part.replace('</b>', '</b>' + headword_b_tag, 1)
 
+                    final_definition = re.sub(r'<b><sup>[IVXL]+</sup></b>\s*', '', final_definition)
+
                     final_entry = finalise_entry(entry_word_base, final_definition, add_syns, debug_words)
                     processed_results.append(final_entry)
                     metrics['synonyms_added'] += final_entry['syn_count']
