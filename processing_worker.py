@@ -147,7 +147,7 @@ def process_entry_line_worker(line_tuple: tuple[str, bool, set[str] | None]) -> 
                     # Second part: Wrap the existing headword (it starts with <b>...</b>)
                     final_definition = re.sub(r'<b>(.*?)</b>', r'<span class="headword"><b>\1</b></span>', processed_part, count=1)
                     # Clean up trailing dtrn tags that can pollute the end of the second merged entry
-                    final_definition = re.sub(r'<dtrn>.*?</dtrn>$', '', final_definition)
+                    final_definition = re.sub(r'\s*<dtrn>.*?</dtrn>$', '', final_definition)
 
                 final_entry = finalise_entry(entry_word_base, final_definition, add_syns, debug_words)
                 processed_results.append(final_entry)

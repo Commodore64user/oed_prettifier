@@ -31,6 +31,7 @@ class DuplicateHandler:
         hw_forms = [re.sub(r'\(', '', f) for f in hw_forms]  # then strip bare opening parens
         clean_hw_base = re.sub(r'\([^)]*\)', '', clean_hw)  # e.g. '† ey(e)rer' → '† eyrer'
 
+        definition = definition.rstrip()
         # Hash the processed definition, we need to unescape so `&#x27;` matches `&apos;`
         def_hash = hashlib.sha256(html.unescape(definition).encode('utf-8')).hexdigest()
 
