@@ -69,12 +69,13 @@ class EntryProcessor:
         html = re.sub(r'\\n', ' ', html)
         html = re.sub(r'\\t', ' ', html)
         html = re.sub(r'(</b>|/)(\[)', r'\1 \2', html)
-        if self.headword.endswith('.'):
-            html = html.replace('<abr>', '', 1)
-            html = html.replace('</abr>', '', 1)
+        if self.headword.endswith('.') and self.headword != 'No.':
+            # Escape the headword so dots are treated as literal dots, not regex wildcards
+            pattern = rf'<abr>({re.escape(self.headword)})</abr>'
+            html = re.sub(pattern, r'\1', html, count=1)
 
         html = re.sub(r'(<span>[IVXL]+\.</span></span></b>)\s*(<blockquote>)?(<b>.*?</b>)(</blockquote>)?', r'\1 <span class="headword">\3</span>', html, flags=re.DOTALL)
-        html = re.sub(r'<blockquote>\(<span style="color:#2F4F4F">(.*?)</span>\)</blockquote>', r' (<span class="phonetic">\1</span>)', html, flags=re.DOTALL)
+        html = re.sub(r'<blockquote>\(<span style="color:#2F4F4F">(.*?)</span>\)</blockquote>', r'(<span class="phonetic">\1</span>)', html, flags=re.DOTALL)
         html = re.sub(r'<span style="color:#2F4F4F">(.*?)</span>', r'<span class="phonetic">\1</span>', html, flags=re.DOTALL)
 
         html = html.replace('<blockquote><ex>', '<div class="quotations">')
@@ -87,6 +88,8 @@ class EntryProcessor:
         html = re.sub(r'(<abr>¶</abr>)\s', r'\1', html)
         html = re.sub(r'(<abr>‖</abr>)\s', r'\1', html)
         html = re.sub(r'<kref>(.*?)</kref>', r'<span class="kref">\1</span>', html)
+        html = html.replace('<abr>=</abr>  (', '<abr>=</abr> (')
+        html = html.replace('</sub>  (', '</sub> (')
         html = html.replace('<abr>=</abr>', '<span class="same-as">=</span>')
         html = re.sub(r'(<dtrn>(.*?)</dtrn>)\s*<dtrn>(.*?)</dtrn>', r' <br/>\1', html)
         html = re.sub(r'<b>(<i>(?:Affix|Derivatives|Compounds)\.</i>)</b>', r'\1', html)
@@ -198,6 +201,8 @@ class EntryProcessor:
         html = re.sub(r'<blockquote>(<abr>Pa.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Past and <abr>pple.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Pl. <b>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
+        # this one gets reprocessed later on in _apply_headword_fix_outside_quotations
+        html = re.sub(r'<blockquote>(Pl. [,.;].*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Usually in <abr>pl.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(commonly in (?:<i>)?<abr>pl.</abr>.*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
         html = re.sub(r'<blockquote>(Inflected .*?)</blockquote>', r'<div class="forms">\1</div>', html, flags=re.DOTALL)
@@ -381,12 +386,6 @@ class EntryProcessor:
             return cedilla_map.get(letter, match.group(0))
         html = re.sub(r'\{([^}]+)ced\}', replace_cedilla, html)
         html = re.sub(r'⊇', 'e', html)
-        # Leap of faith here, but cross-referencing with the OED online, this seems to be in fact the case. Not sure why is missing though.
-        html = re.sub(r'\u2013 ([,;\.])', f'– <b>{html_module.escape(self.headword)}</b>' + r'\1', html)
-        html = re.sub(r'(\d)\u2013  \(', r'\1' + f'– <b>{html_module.escape(self.headword)}</b> (', html) #hois
-        html = re.sub(r'([0-9]) ([,;:\.])', r'\1' + f' <b>{html_module.escape(self.headword)}</b>' + r'\2', html)
-        html = re.sub(r'Also ([\. ])', f'Also <b>{html_module.escape(self.headword)}</b>' + r'\1', html)
-        # html = re.sub(r'\u2013 ([,;\.])', f'– <b>{html_module.escape(self.headword)}</b>' + r'\1', html) TODO # I forgot which headword it was
         def replace_breve(match):
             letter = match.group(1)
             breve_map = {
@@ -608,6 +607,16 @@ class EntryProcessor:
         # single occurence in entry "crumpet", doing it for Lady Bracknell...
         html = re.sub(r'<span class="author">(a tender cake of o loof, spreynde with oile, paast sodun)</span>', r'\1', html)
         html = html.replace('</b>; β.</blockquote>', '</b>; β<b>otherwise</b>.</blockquote>')
+        html = html.replace('See also  Early', 'See also <span class="kref">bushment</span>. Early') # entry 'embushment'
+        html = html.replace('See also  as', 'See also C.B. as') # entry 'C'
+        html = html.replace('See also  a.', 'See also <span class="kref">O.K.</span> a.') # entry 'O'
+        html = html.replace('see also  <abr>', 'See also <span class="kref">Lit</span> <abr>') # entry 'sup'
+        html = html.replace('<abr>Mod.</abr>E. .', '<abr>Mod.</abr>E. <b>tell</b>.') # entry 'tell'
+        html = html.replace('; 6  6, 9', '; 6 <b>speare</b> 6, 9') # entry 'speare'
+        html = html.replace('>, ?  <', '>, ? <b>athel</b> <') # entry 'athel'
+
+        html = re.sub(r'(<b>partridge p.</b>,) , (<b>rock p.</b>)', r'\1 <span class="kref">passanger-p.</span>, \2', html) # entry 'pigeon'
+
         if html.startswith('<b>['):
             for old, new in [
                 ('<div class="quotations">]</div>', '<span class="spurious-entry">]</span>'),
@@ -623,7 +632,91 @@ class EntryProcessor:
         html = re.sub(r'<span class="translator">tr.</span>', '<abr>tr.</abr>', html)
         html = html.replace('<abr>', '<span class="abbreviation">')
         html = html.replace('</abr>', '</span>')
+
+        escaped_hwd = html_module.escape(self.headword)
+        def _apply_headword_fix_outside_quotations(fragment: str) -> str:
+            quote_blocks = []
+            placeholder_prefix = '__OED_QUOTATION_BLOCK_'
+
+            quote_start_pattern = re.compile(
+                r'''<div\b[^>]*\bclass=(['"])[^'"]*\bquotations\b[^'"]*\1[^>]*>''',
+                flags=re.IGNORECASE,
+            )
+            div_token_pattern = re.compile(r'<div\b[^>]*>|</div>', flags=re.IGNORECASE)
+
+            def _stash_quotations(raw_fragment: str) -> str:
+                parts = []
+                cursor = 0
+
+                while True:
+                    start_match = quote_start_pattern.search(raw_fragment, cursor)
+                    if not start_match:
+                        parts.append(raw_fragment[cursor:])
+                        break
+
+                    start_idx = start_match.start()
+                    parts.append(raw_fragment[cursor:start_idx])
+
+                    depth = 0
+                    end_idx = None
+                    for token_match in div_token_pattern.finditer(raw_fragment, start_idx):
+                        token = token_match.group(0)
+                        if token.lower().startswith('<div'):
+                            depth += 1
+                        else:
+                            depth -= 1
+                            if depth == 0:
+                                end_idx = token_match.end()
+                                break
+
+                    if end_idx is None:
+                        # If HTML is malformed, keep the tail untouched rather than truncating content.
+                        parts.append(raw_fragment[start_idx:])
+                        break
+
+                    quote_blocks.append(raw_fragment[start_idx:end_idx])
+                    parts.append(f'{placeholder_prefix}{len(quote_blocks) - 1}__')
+                    cursor = end_idx
+                return ''.join(parts)
+
+            # Keep quotation HTML untouched, then apply the fixes to the rest.
+            html_fragment = _stash_quotations(fragment)
+
+            html_fragment = re.sub(r'\u2013 ([,;.])',               f'– <b>{escaped_hwd}</b>' + r'\1', html_fragment)
+            html_fragment = re.sub(r'(\d)\u2013  (\(|</)',          r'\1' + f'– <b>{escaped_hwd}</b> ' + r'\2', html_fragment) #hois
+            html_fragment = re.sub(r'([0-9]) ([,;:.])',             r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r'Also ([., ])',                 f'Also <b>{escaped_hwd}</b>' + r'\1', html_fragment)
+            html_fragment = re.sub(r'\(also \)',                    f'(also <b>{escaped_hwd}</b>)', html_fragment)
+            html_fragment = re.sub(r'([Hh])ence ([,. ])',           r'\1' + f'ence <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r', ([,.;])',                    f', <b>{escaped_hwd}</b>' + r'\1', html_fragment)
+            html_fragment = re.sub(r'([lL]\.) ([,.;])',             r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r'(\(\d) \)',                    r'\1' + f' <b>{escaped_hwd}</b>)', html_fragment)
+            html_fragment = re.sub(r'>; \.',                        f'>; <b>{escaped_hwd}</b>.', html_fragment)
+            html_fragment = re.sub(r'\) ([,])',                     f') <b>{escaped_hwd}</b>' + r'\1', html_fragment)
+            html_fragment = re.sub(r'\(\),',                        f'(<b>{escaped_hwd}</b>),', html_fragment)
+            html_fragment = re.sub(r'(\(\d\)) ([;,.])',             r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r'(\d–\d)  (\(\d)',              r'\1' + f' <b>{escaped_hwd}</b> ' + r'\2', html_fragment)
+            html_fragment = re.sub(r'(\d–(?:\d)?) </div',           r'\1' + f' <b>{escaped_hwd}</b></div', html_fragment)
+            # html_fragment = re.sub(r'(\d–) </div',                  r'\1' + f' <b>{escaped_hwd}</b></div', html_fragment)
+            html_fragment = re.sub(r'\) \.</div',                   f') <b>{escaped_hwd}</b>.</div', html_fragment)
+            html_fragment = re.sub(r'\) ; (\d)',                    f') <b>{escaped_hwd}</b>;' + r'\1', html_fragment)
+            html_fragment = re.sub(r'(\d) \)\.</',                  r'\1' + f' <b>{escaped_hwd}</b>).</', html_fragment)
+            html_fragment = re.sub(r'(sing\.</span></i>) ([,. ])',  r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r'(Sc\.</span></i>) ([.,])',     r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r'(dial\.</span></i>) ([.,; ])', r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r'(pple.</span></i>) ([,.;])',   r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r'(pple.</span>) ([,.;])',       r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r'([^\w][Ss]o)  ([(<])',         r'\1' + f' <b>{escaped_hwd}</b> ' + r'\2', html_fragment)
+            html_fragment = re.sub(r'(†</span>) ([,.])',            r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            # html_fragment = re.sub(r'  \(',             f' <b>{escaped_hwd}</b> (', html_fragment)
+
+            for idx, quote_block in enumerate(quote_blocks):
+                html_fragment = html_fragment.replace(f'{placeholder_prefix}{idx}__', quote_block)
+
+            return html_fragment
+        html = _apply_headword_fix_outside_quotations(html)
         html = re.sub(r'\s+', ' ', html)
+        html = html.rstrip()
 
         # this final step is for testing purposes only, to make spotting these much easier
         html = re.sub(r'\{([^\s{}]+)\}', r'<span class="unprocessed">{\1}</span>', html)
