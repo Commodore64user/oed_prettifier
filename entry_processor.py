@@ -236,6 +236,9 @@ class EntryProcessor:
         html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[0-9]+\.\]?)</span>', r'<span class="pos">\1</span> <span class="senses">\2</span>', html)
         html = re.sub(r'<span style="color:#4B0082">(\[?[A-Z]\.\]?) (\[?[a-z]\.\]?)</span>', r'<span class="pos">\1</span> <span class="subsenses">\2</span>', html)
 
+        # odd case (entry 'do'), must happen before _process_pos_forms_section
+        html = html.replace('<i><abr>pl.</abr></i>; .', '<i><abr>pl.</abr></i>; <b>do</b>.')
+
         if 'class="pos"' in html:
             html = self._process_pos_forms_section(html)
 
@@ -614,6 +617,7 @@ class EntryProcessor:
         html = html.replace('<abr>Mod.</abr>E. .', '<abr>Mod.</abr>E. <b>tell</b>.') # entry 'tell'
         html = html.replace('; 6  6, 9', '; 6 <b>speare</b> 6, 9') # entry 'speare'
         html = html.replace('>, ?  <', '>, ? <b>athel</b> <') # entry 'athel'
+        html = html.replace(') ; <i>', ') <b>think</b>; <i>') # entry 'think'
 
         html = re.sub(r'(<b>partridge p.</b>,) , (<b>rock p.</b>)', r'\1 <span class="kref">passanger-p.</span>, \2', html) # entry 'pigeon'
 
@@ -703,11 +707,14 @@ class EntryProcessor:
             html_fragment = re.sub(r'(\d) \)\.</',                  r'\1' + f' <b>{escaped_hwd}</b>).</', html_fragment)
             html_fragment = re.sub(r'(sing\.</span></i>) ([,. ])',  r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
             html_fragment = re.sub(r'(Sc\.</span></i>) ([.,])',     r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r'(pl\.</span></i>) ([.,])',     r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r'(imp\.</span></i>) ([.,])',     r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
             html_fragment = re.sub(r'(dial\.</span></i>) ([.,; ])', r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
             html_fragment = re.sub(r'(pple.</span></i>) ([,.;])',   r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
             html_fragment = re.sub(r'(pple.</span>) ([,.;])',       r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r'(inf\.</i>,)  \(',             r'\1' + f' <b>{escaped_hwd}</b> (', html_fragment)
             html_fragment = re.sub(r'([^\w][Ss]o)  ([(<])',         r'\1' + f' <b>{escaped_hwd}</b> ' + r'\2', html_fragment)
-            html_fragment = re.sub(r'(†</span>) ([,.])',            r'\1' + f' <b>{escaped_hwd}</b>' + r'\2', html_fragment)
+            html_fragment = re.sub(r'(†</span>)([,.])',             r'\1' + f'<b>{escaped_hwd}</b>' + r'\2', html_fragment)
             # html_fragment = re.sub(r'  \(',             f' <b>{escaped_hwd}</b> (', html_fragment)
 
             for idx, quote_block in enumerate(quote_blocks):
