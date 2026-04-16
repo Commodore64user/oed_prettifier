@@ -486,6 +486,17 @@ class EntryProcessor:
             }
             return circ_map.get(letter, match.group(0))
         html = re.sub(r'\{([^}]+)circ\}', replace_circ, html)
+        def replace_uml(match):
+            letter = match.group(1)
+            uml_map = {
+                'gi':   '\u03ca',        # ϊ  Greek iota with dialytika
+                'gu':   '\u03cb',        # ϋ  Greek upsilon with dialytika
+                'imac': '\u012b\u0308',  # ī̈  i-macron + combining diaeresis
+                'nf':   '\u00a8',        # ¨  standalone diaeresis
+                'v':    'v\u0308',       # v̈  v + combining diaeresis
+            }
+            return uml_map.get(letter, match.group(0))
+        html = re.sub(r'\{([^}]+)uml\}', replace_uml, html)
         def replace_frown(match):
             letter = match.group(1)
             frown_map = {
