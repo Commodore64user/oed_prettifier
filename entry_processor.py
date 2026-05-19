@@ -274,6 +274,15 @@ class EntryProcessor:
         html = html.replace('{hash}', '#')
         html = html.replace('{at}', '@')
         html = html.replace('{cross}', '✠')
+        html = html.replace('{odsb}', '⟦') # missing ones in angle n^2
+        html = html.replace('{cdsb}', '⟧')
+        html = html.replace('{lrar}', '↔')
+        html = html.replace('{female}', '♀')
+        html = html.replace('{male}', '♂')
+        html = html.replace('{saturn}', '♄')
+        html = html.replace('{union}', '∪') # union sets
+        html = html.replace('{intsec}', '∩') # intersection sets
+        html = html.replace('{intset}', 'ℤ') # more sets
         html = html.replace('{fatpara}', '\'¶\'') # liberty taken here, the qoutes should differedntiate it from one used by OED
         html = html.replace('{revsc}', '\u061B') # reverse semi-colon
         html = html.replace('{arzero}', '\u0660')  # Arabic-Indic zero ٠
